@@ -39,7 +39,8 @@ public SpringApplication(ResourceLoader resourceLoader, Class<?>... primarySourc
     this.primarySources = new LinkedHashSet<>(Arrays.asList(primarySources));
     //推断web应用类型(REACTIVE|NONE|SERVLET) 一般我们的应用都是SERVLET类型。
     this.webApplicationType = WebApplicationType.deduceFromClasspath();  
-    //创建META-INF/spring.factories中类型为ApplicationContextInitializer的所有实例，添加到         //initializers集合，此处getSpringFactoriesInstances为核心方法，如果想自己添加需要2步，1：创
+    //创建META-INF/spring.factories中类型为ApplicationContextInitializer的所有实例，添加到
+    //initializers集合，此处getSpringFactoriesInstances为核心方法，如果想自己添加需要2步，1：创
     //建自定义类并且实现ApplicationContextInitializer接口；2：创建spring.factories文件并且配置好
     //刚刚自己定义的Initializer类，可以设置Order值来调整加载顺序。
     setInitializers((Collection) getSpringFactoriesInstances(
@@ -89,9 +90,10 @@ public ConfigurableApplicationContext run(String... args) {
         //#1 创建StandardServletEnvironment实例，并且加载配置资源
         ConfigurableEnvironment environment = prepareEnvironment(listeners,
                 applicationArguments);
-        //设置spring.beaninfo.ignore为true
+        //设置spring.beaninfo.ignore的值，先从系统参数中获取，如果没有，再从spring配置中获取。具体
+        //作用不清楚。
         configureIgnoreBeanInfo(environment);
-        //初始化banner标语，也就是spring加载的图画
+        //初始化banner标语，也就是spring加载的图画，可以创建banner.txt文件来实现自定义图案。
         Banner printedBanner = printBanner(environment);
         //根据webApplicationType类型创建对应实例，如果是Servlet,那么实例为
         //AnnotationConfigServletWebServerApplicationContext,并且创建
