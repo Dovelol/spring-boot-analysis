@@ -98,7 +98,7 @@ public ConfigurableApplicationContext run(String... args) {
         //根据webApplicationType类型创建对应实例，如果是Servlet,那么实例为
         //AnnotationConfigServletWebServerApplicationContext,并且初始化各种父类的实例，如：
         //GenericApplicationContext中this.beanFactory = new DefaultListableBeanFactory()；
-        //关键类RootBeanDefinition也是在这个过程中注册的，并且会注册一下内置的processor。
+        //关键类RootBeanDefinition也是在这个过程中创建的，并且会注册一下内置的processor。
         //AnnotatedBeanDefinitionReader对象，
         context = createApplicationContext();
         //创建FailureAnalyzers实例
