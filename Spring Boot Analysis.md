@@ -322,110 +322,110 @@ public ClassPathBeanDefinitionScanner(BeanDefinitionRegistry registry, boolean 	
 }
 	
 	//#2-1-2-1
-	@SuppressWarnings("unchecked")
-	protected void registerDefaultFilters() {
-        //list集合中添加Component类型的注解过滤器。
-		this.includeFilters.add(new AnnotationTypeFilter(Component.class));
-		//获取当前类的ClassLoader，Launcher$AppClassLoader。
-        ClassLoader cl = ClassPathScanningCandidateComponentProvider.class.getClassLoader();
-		try {
-            //list集合中添加javax.annotation.ManagedBean类型的注解过滤器，如果没有这个类会catch住ClassNotFoundException 异常。
-			this.includeFilters.add(new AnnotationTypeFilter(
-					((Class<? extends Annotation>) ClassUtils.forName("javax.annotation.ManagedBean", cl)), false));
-			logger.trace("JSR-250 'javax.annotation.ManagedBean' found and supported for component scanning");
-		}
-		catch (ClassNotFoundException ex) {
-			// JSR-250 1.1 API (as included in Java EE 6) not available - simply skip.
-		}
-		try {
-             //list集合中添加javax.inject.Named类型的注解过滤器。
-			this.includeFilters.add(new AnnotationTypeFilter(
-					((Class<? extends Annotation>) ClassUtils.forName("javax.inject.Named", cl)), false));
-			logger.trace("JSR-330 'javax.inject.Named' annotation found and supported for component scanning");
-		}
-		catch (ClassNotFoundException ex) {
-			// JSR-330 API not available - simply skip.
-		}
-	}
+@SuppressWarnings("unchecked")
+protected void registerDefaultFilters() {
+    //list集合中添加Component类型的注解过滤器。
+    this.includeFilters.add(new AnnotationTypeFilter(Component.class));
+    //获取当前类的ClassLoader，Launcher$AppClassLoader。
+    ClassLoader cl = ClassPathScanningCandidateComponentProvider.class.getClassLoader();
+    try {
+        //list集合中添加javax.annotation.ManagedBean类型的注解过滤器，如果没有这个类会catch住ClassNotFoundException 异常。
+        this.includeFilters.add(new AnnotationTypeFilter(
+            ((Class<? extends Annotation>) ClassUtils.forName("javax.annotation.ManagedBean", cl)), false));
+        logger.trace("JSR-250 'javax.annotation.ManagedBean' found and supported for component scanning");
+    }
+    catch (ClassNotFoundException ex) {
+        // JSR-250 1.1 API (as included in Java EE 6) not available - simply skip.
+    }
+    try {
+        //list集合中添加javax.inject.Named类型的注解过滤器。
+        this.includeFilters.add(new AnnotationTypeFilter(
+            ((Class<? extends Annotation>) ClassUtils.forName("javax.inject.Named", cl)), false));
+        logger.trace("JSR-330 'javax.inject.Named' annotation found and supported for component scanning");
+    }
+    catch (ClassNotFoundException ex) {
+        // JSR-330 API not available - simply skip.
+    }
+}
 
-	//#2-1-2-2
-	public void setResourceLoader(@Nullable ResourceLoader resourceLoader) {
-        //赋值this.resourcePatternResolver = ACSWSAC。
-		this.resourcePatternResolver = ResourcePatternUtils.getResourcePatternResolver(resourceLoader);
-        //创建CachingMetadataReaderFactory对象，目的不详。
-		this.metadataReaderFactory = new CachingMetadataReaderFactory(resourceLoader);
-        //增加spring.components配置，加速包扫描速度。
-		this.componentsIndex = CandidateComponentsIndexLoader.loadIndex(this.resourcePatternResolver.getClassLoader());
-	}
+//#2-1-2-2
+public void setResourceLoader(@Nullable ResourceLoader resourceLoader) {
+    //赋值this.resourcePatternResolver = ACSWSAC。
+    this.resourcePatternResolver = ResourcePatternUtils.getResourcePatternResolver(resourceLoader);
+    //创建CachingMetadataReaderFactory对象，目的不详。
+    this.metadataReaderFactory = new CachingMetadataReaderFactory(resourceLoader);
+    //增加spring.components配置，加速包扫描速度。
+    this.componentsIndex = CandidateComponentsIndexLoader.loadIndex(this.resourcePatternResolver.getClassLoader());
+}
 
-	//#4
-	private void prepareContext(ConfigurableApplicationContext context,
-			ConfigurableEnvironment environment, SpringApplicationRunListeners listeners,
-			ApplicationArguments applicationArguments, Banner printedBanner) {
-		//ACSWSAC设置环境参数为environment，并且AbstractApplicationContext，reader，scanner都重新设置。这里有个疑问，既然这边重新设置，那为啥在创建ACSWSAC的时候要创建environment对象，这两个对象并不一致。
-        context.setEnvironment(environment);
-        //#4-1
-		postProcessApplicationContext(context);
-        //执行前面加载的所有Initializer的initialize方法，比如自定义的DemoInitializer。[DemoInitializer, DelegatingApplicationContextInitializer, SharedMetadataReaderFactoryContextInitializer, ContextIdApplicationContextInitialize, ConfigurationWarningsApplicationContextInitializer, ServerPortInfoApplicationContextInitializer, ConditionEvaluationReportLoggingListener]
-		applyInitializers(context);
-        //调用类型为ApplicationContextInitializedEvent的监听器的onApplicationEvent方法。
-		listeners.contextPrepared(context);
-		if (this.logStartupInfo) {
-            //如果context是根结构，那么打印启动信息，比如ApplicationName、pid、context信息等。
-			logStartupInfo(context.getParent() == null);
-            //打印启动应用的环境属性信息。
-			logStartupProfileInfo(context);
-		}
-		// Add boot specific singleton beans
-        //获取到context的beanFactory。
-		ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
-        //将applicationArguments注册到beanFactory中。
-		beanFactory.registerSingleton("springApplicationArguments", applicationArguments);
-		if (printedBanner != null) {
-            //如果启动标志类不为null，也注册到beanFactory中。
-			beanFactory.registerSingleton("springBootBanner", printedBanner);
-		}
-        //判断beanFactory的类型。
-		if (beanFactory instanceof DefaultListableBeanFactory) {
-            //设置allowBeanDefinitionOverriding。
-			((DefaultListableBeanFactory) beanFactory)
-.setAllowBeanDefinitionOverriding(this.allowBeanDefinitionOverriding);
-		}
-		// Load the sources
-        //获取所有的sources。
-		Set<Object> sources = getAllSources();
-		Assert.notEmpty(sources, "Sources must not be empty");
-        //将自定义启动类注册到beanFactory中。
-		load(context, sources.toArray(new Object[0]));
-        //
-		listeners.contextLoaded(context);
-	}
+//#4
+private void prepareContext(ConfigurableApplicationContext context,
+                            ConfigurableEnvironment environment, SpringApplicationRunListeners listeners,
+                            ApplicationArguments applicationArguments, Banner printedBanner) {
+    //ACSWSAC设置环境参数为environment，并且AbstractApplicationContext，reader，scanner都重新设置。这里有个疑问，既然这边重新设置，那为啥在创建ACSWSAC的时候要创建environment对象，这两个对象并不一致。
+    context.setEnvironment(environment);
+    //#4-1
+    postProcessApplicationContext(context);
+    //执行前面加载的所有Initializer的initialize方法，比如自定义的DemoInitializer。[DemoInitializer, DelegatingApplicationContextInitializer, SharedMetadataReaderFactoryContextInitializer, ContextIdApplicationContextInitialize, ConfigurationWarningsApplicationContextInitializer, ServerPortInfoApplicationContextInitializer, ConditionEvaluationReportLoggingListener]
+    applyInitializers(context);
+    //调用类型为ApplicationContextInitializedEvent的监听器的onApplicationEvent方法。
+    listeners.contextPrepared(context);
+    if (this.logStartupInfo) {
+        //如果context是根结构，那么打印启动信息，比如ApplicationName、pid、context信息等。
+        logStartupInfo(context.getParent() == null);
+        //打印启动应用的环境属性信息。
+        logStartupProfileInfo(context);
+    }
+    // Add boot specific singleton beans
+    //获取到context的beanFactory。
+    ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
+    //将applicationArguments注册到beanFactory中。
+    beanFactory.registerSingleton("springApplicationArguments", applicationArguments);
+    if (printedBanner != null) {
+        //如果启动标志类不为null，也注册到beanFactory中。
+        beanFactory.registerSingleton("springBootBanner", printedBanner);
+    }
+    //判断beanFactory的类型。
+    if (beanFactory instanceof DefaultListableBeanFactory) {
+        //设置allowBeanDefinitionOverriding。
+        ((DefaultListableBeanFactory) beanFactory)
+        .setAllowBeanDefinitionOverriding(this.allowBeanDefinitionOverriding);
+    }
+    // Load the sources
+    //获取所有的sources。
+    Set<Object> sources = getAllSources();
+    Assert.notEmpty(sources, "Sources must not be empty");
+    //将自定义启动类注册到beanFactory中。
+    load(context, sources.toArray(new Object[0]));
+    //
+    listeners.contextLoaded(context);
+}
 
-	//#4-1 
-	protected void postProcessApplicationContext(ConfigurableApplicationContext context) {
-        //如果不为null，将name和实例添加到beanFactory中。
-		if (this.beanNameGenerator != null) {
-			context.getBeanFactory().registerSingleton(
-					AnnotationConfigUtils.CONFIGURATION_BEAN_NAME_GENERATOR,
-					this.beanNameGenerator);
-		}
-        //如果不为null，设置resourceLoader和classLoader。
-		if (this.resourceLoader != null) {
-			if (context instanceof GenericApplicationContext) {
-				((GenericApplicationContext) context)
-						.setResourceLoader(this.resourceLoader);
-			}
-			if (context instanceof DefaultResourceLoader) {
-				((DefaultResourceLoader) context)
-						.setClassLoader(this.resourceLoader.getClassLoader());
-			}
-		}
-		if (this.addConversionService) {
-            //设置beanFactory的数据转换类。
-			context.getBeanFactory().setConversionService(
-					ApplicationConversionService.getSharedInstance());
-		}
-	}
+//#4-1 
+protected void postProcessApplicationContext(ConfigurableApplicationContext context) {
+    //如果不为null，将name和实例添加到beanFactory中。
+    if (this.beanNameGenerator != null) {
+        context.getBeanFactory().registerSingleton(
+            AnnotationConfigUtils.CONFIGURATION_BEAN_NAME_GENERATOR,
+            this.beanNameGenerator);
+    }
+    //如果不为null，设置resourceLoader和classLoader。
+    if (this.resourceLoader != null) {
+        if (context instanceof GenericApplicationContext) {
+            ((GenericApplicationContext) context)
+            .setResourceLoader(this.resourceLoader);
+        }
+        if (context instanceof DefaultResourceLoader) {
+            ((DefaultResourceLoader) context)
+            .setClassLoader(this.resourceLoader.getClassLoader());
+        }
+    }
+    if (this.addConversionService) {
+        //设置beanFactory的数据转换类。
+        context.getBeanFactory().setConversionService(
+            ApplicationConversionService.getSharedInstance());
+    }
+}
 
 ```
 
@@ -441,20 +441,14 @@ public void refresh() throws BeansException, IllegalStateException {
         // 准备上下文
         prepareRefresh();
 
-        // Tell the subclass to refresh the internal bean factory.
-        // 返回DefaultListableBeanFactory，设置serializationId=application
+        // Tell the subclass to refresh the internal bean factory.返回DefaultListableBeanFactory，设置serializationId=application
         ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
 
-        // Prepare the bean factory for use in this context.
-        // 设置DefaultListableBeanFactory各种配置
+        // Prepare the bean factory for use in this context.设置DefaultListableBeanFactory各种配置
         prepareBeanFactory(beanFactory);
 
         try {
-            // Allows post-processing of the bean factory in context subclasses.
-            // 上下文是AnnotationConfigApplicationContext时，没有重写该方法，所以无操作
-            // 上下文是AnnotationConfigServletWebServerApplicationContext时，进入该
-            // 重写方法，创建WebApplicationContextServletContextAwareProcessor实例
-            // 并且添加到beanFactory的beanPostProcessors中
+            // Allows post-processing of the bean factory in context subclasses.上下文是AnnotationConfigApplicationContext时，没有重写该方法，所以无操作上下文是AnnotationConfigServletWebServerApplicationContext时，进入该重写方法，创建WebApplicationContextServletContextAwareProcessor实例并且添加到beanFactory的beanPostProcessors中
             postProcessBeanFactory(beanFactory);
 
             // Invoke factory processors registered as beans in the context.
