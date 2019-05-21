@@ -371,23 +371,33 @@ public ClassPathBeanDefinitionScanner(BeanDefinitionRegistry registry, boolean 	
         //调用类型为ApplicationContextInitializedEvent的监听器的onApplicationEvent方法。
 		listeners.contextPrepared(context);
 		if (this.logStartupInfo) {
+            //如果context是根结构，那么打印启动信息，比如ApplicationName、pid、context信息等。
 			logStartupInfo(context.getParent() == null);
+            //打印启动应用的环境属性信息。
 			logStartupProfileInfo(context);
 		}
 		// Add boot specific singleton beans
+        //获取到context的beanFactory。
 		ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
+        //将applicationArguments注册到beanFactory中。
 		beanFactory.registerSingleton("springApplicationArguments", applicationArguments);
 		if (printedBanner != null) {
+            //如果启动标志类不为null，也注册到beanFactory中。
 			beanFactory.registerSingleton("springBootBanner", printedBanner);
 		}
+        //判断beanFactory的类型。
 		if (beanFactory instanceof DefaultListableBeanFactory) {
+            //设置allowBeanDefinitionOverriding。
 			((DefaultListableBeanFactory) beanFactory)
-					.setAllowBeanDefinitionOverriding(this.allowBeanDefinitionOverriding);
+.setAllowBeanDefinitionOverriding(this.allowBeanDefinitionOverriding);
 		}
 		// Load the sources
+        //获取所有的sources。
 		Set<Object> sources = getAllSources();
 		Assert.notEmpty(sources, "Sources must not be empty");
+        //将自定义启动类注册到beanFactory中。
 		load(context, sources.toArray(new Object[0]));
+        //
 		listeners.contextLoaded(context);
 	}
 
