@@ -93,9 +93,10 @@ public ConfigurableApplicationContext run(String... args) {
         exceptionReporters = getSpringFactoriesInstances(
                 SpringBootExceptionReporter.class,
                 new Class[] { ConfigurableApplicationContext.class }, context);
-        //#3 上下文准备工作
+        //#3 上下文准备工作，主要是设置环境变量，执行所有Initializer的方法，还有就是注册一些内置默认的bean。
         prepareContext(context, environment, listeners, applicationArguments,
                 printedBanner);
+        //#4
         refreshContext(context);
         afterRefresh(context, applicationArguments);
         stopWatch.stop();
@@ -358,13 +359,13 @@ public void setResourceLoader(@Nullable ResourceLoader resourceLoader) {
     this.componentsIndex = CandidateComponentsIndexLoader.loadIndex(this.resourcePatternResolver.getClassLoader());
 }
 
-//#4
+//#3
 private void prepareContext(ConfigurableApplicationContext context,
                             ConfigurableEnvironment environment, SpringApplicationRunListeners listeners,
                             ApplicationArguments applicationArguments, Banner printedBanner) {
     //ACSWSAC设置环境参数为environment，并且AbstractApplicationContext，reader，scanner都重新设置。这里有个疑问，既然这边重新设置，那为啥在创建ACSWSAC的时候要创建environment对象，这两个对象并不一致。
     context.setEnvironment(environment);
-    //#4-1
+    //#3-1
     postProcessApplicationContext(context);
     //执行前面加载的所有Initializer的initialize方法，比如自定义的DemoInitializer。[DemoInitializer, DelegatingApplicationContextInitializer, SharedMetadataReaderFactoryContextInitializer, ContextIdApplicationContextInitialize, ConfigurationWarningsApplicationContextInitializer, ServerPortInfoApplicationContextInitializer, ConditionEvaluationReportLoggingListener]
     applyInitializers(context);
@@ -397,11 +398,11 @@ private void prepareContext(ConfigurableApplicationContext context,
     Assert.notEmpty(sources, "Sources must not be empty");
     //将自定义启动类注册到beanFactory中。
     load(context, sources.toArray(new Object[0]));
-    //
+    //调用监听器的onApplicationEvent方法，事件类型是ApplicationPreparedEvent。
     listeners.contextLoaded(context);
 }
 
-//#4-1 
+//#3-1 
 protected void postProcessApplicationContext(ConfigurableApplicationContext context) {
     //如果不为null，将name和实例添加到beanFactory中。
     if (this.beanNameGenerator != null) {
@@ -427,24 +428,60 @@ protected void postProcessApplicationContext(ConfigurableApplicationContext cont
     }
 }
 
+//#4 
+private void refreshContext(ConfigurableApplicationContext context) {
+    //#4-1
+    refresh(context);
+    if (this.registerShutdownHook) {
+        try {
+            context.registerShutdownHook();
+        }
+        catch (AccessControlException ex) {
+            // Not allowed in some environments.
+        }
+    }
+}
+
+//#4-1 连续调用
+protected void refresh(ApplicationContext applicationContext) {
+    Assert.isInstanceOf(AbstractApplicationContext.class, applicationContext);
+    ((AbstractApplicationContext) applicationContext).refresh();
+}
+
+//#4-1 
+public final void refresh() throws BeansException, IllegalStateException {
+    try {
+        //最终调用到SpringApplication类中的refresh方法
+        super.refresh();
+    }
+    catch (RuntimeException ex) {
+        stopAndReleaseWebServer();
+        throw ex;
+    }
+}
+
+
 ```
 
 
 
-##  `SpringApplication`类中的run方法
+##  `SpringApplication`类中的refresh方法
 
 ```java
 @Override
 public void refresh() throws BeansException, IllegalStateException {
+    //这里加锁，主要是防止并发的启动context。
     synchronized (this.startupShutdownMonitor) {
         // Prepare this context for refreshing.
-        // 准备上下文
+        // 准备上下文，主要是设置启动时间、活跃状态，还有初始化一些配置。
         prepareRefresh();
 
-        // Tell the subclass to refresh the internal bean factory.返回DefaultListableBeanFactory，设置serializationId=application
+        // Tell the subclass to refresh the internal bean factory.
+        //返回DefaultListableBeanFactory，设置serializationId=application
         ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
 
-        // Prepare the bean factory for use in this context.设置DefaultListableBeanFactory各种配置
+        // Prepare the bean factory for use in this context.
+        //#1 设置DefaultListableBeanFactory各种配置
         prepareBeanFactory(beanFactory);
 
         try {
@@ -499,6 +536,56 @@ public void refresh() throws BeansException, IllegalStateException {
         }
     }
 }
+
+//#1 
+protected void prepareBeanFactory(ConfigurableListableBeanFactory beanFactory) {
+    // Tell the internal bean factory to use the context's class loader etc.
+    //设置ClassLoader
+    beanFactory.setBeanClassLoader(getClassLoader());
+    //设置表达式处理器为StandardBeanExpressionResolver，这个应该就是处理
+    beanFactory.setBeanExpressionResolver(new StandardBeanExpressionResolver(beanFactory.getBeanClassLoader()));
+    beanFactory.addPropertyEditorRegistrar(new ResourceEditorRegistrar(this, getEnvironment()));
+
+    // Configure the bean factory with context callbacks.
+    beanFactory.addBeanPostProcessor(new ApplicationContextAwareProcessor(this));
+    beanFactory.ignoreDependencyInterface(EnvironmentAware.class);
+    beanFactory.ignoreDependencyInterface(EmbeddedValueResolverAware.class);
+    beanFactory.ignoreDependencyInterface(ResourceLoaderAware.class);
+    beanFactory.ignoreDependencyInterface(ApplicationEventPublisherAware.class);
+    beanFactory.ignoreDependencyInterface(MessageSourceAware.class);
+    beanFactory.ignoreDependencyInterface(ApplicationContextAware.class);
+
+    // BeanFactory interface not registered as resolvable type in a plain factory.
+    // MessageSource registered (and found for autowiring) as a bean.
+    beanFactory.registerResolvableDependency(BeanFactory.class, beanFactory);
+    beanFactory.registerResolvableDependency(ResourceLoader.class, this);
+    beanFactory.registerResolvableDependency(ApplicationEventPublisher.class, this);
+    beanFactory.registerResolvableDependency(ApplicationContext.class, this);
+
+    // Register early post-processor for detecting inner beans as ApplicationListeners.
+    beanFactory.addBeanPostProcessor(new ApplicationListenerDetector(this));
+
+    // Detect a LoadTimeWeaver and prepare for weaving, if found.
+    if (beanFactory.containsBean(LOAD_TIME_WEAVER_BEAN_NAME)) {
+        beanFactory.addBeanPostProcessor(new LoadTimeWeaverAwareProcessor(beanFactory));
+        // Set a temporary ClassLoader for type matching.
+        beanFactory.setTempClassLoader(new ContextTypeMatchClassLoader(beanFactory.getBeanClassLoader()));
+    }
+
+    // Register default environment beans.
+    if (!beanFactory.containsLocalBean(ENVIRONMENT_BEAN_NAME)) {
+        beanFactory.registerSingleton(ENVIRONMENT_BEAN_NAME, getEnvironment());
+    }
+    if (!beanFactory.containsLocalBean(SYSTEM_PROPERTIES_BEAN_NAME)) {
+        beanFactory.registerSingleton(SYSTEM_PROPERTIES_BEAN_NAME, getEnvironment().getSystemProperties());
+    }
+    if (!beanFactory.containsLocalBean(SYSTEM_ENVIRONMENT_BEAN_NAME)) {
+        beanFactory.registerSingleton(SYSTEM_ENVIRONMENT_BEAN_NAME, getEnvironment().getSystemEnvironment());
+    }
+}
+
+
+
 ```
 
 
