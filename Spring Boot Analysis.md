@@ -544,10 +544,13 @@ protected void prepareBeanFactory(ConfigurableListableBeanFactory beanFactory) {
     beanFactory.setBeanClassLoader(getClassLoader());
     //设置表达式处理器为StandardBeanExpressionResolver，这个应该就是处理
     beanFactory.setBeanExpressionResolver(new StandardBeanExpressionResolver(beanFactory.getBeanClassLoader()));
+    //设置ResourceEditorRegistrar。
     beanFactory.addPropertyEditorRegistrar(new ResourceEditorRegistrar(this, getEnvironment()));
 
     // Configure the bean factory with context callbacks.
+    //beanPostProcessors集合中添加ApplicationContextAwareProcessor。
     beanFactory.addBeanPostProcessor(new ApplicationContextAwareProcessor(this));
+    //ignoredDependencyInterfaces集合中添加EnvironmentAware的class对象，作用是忽略依赖检查和注入。下同。
     beanFactory.ignoreDependencyInterface(EnvironmentAware.class);
     beanFactory.ignoreDependencyInterface(EmbeddedValueResolverAware.class);
     beanFactory.ignoreDependencyInterface(ResourceLoaderAware.class);
@@ -557,15 +560,18 @@ protected void prepareBeanFactory(ConfigurableListableBeanFactory beanFactory) {
 
     // BeanFactory interface not registered as resolvable type in a plain factory.
     // MessageSource registered (and found for autowiring) as a bean.
+    //Map<Class<?>, Object> resolvableDependencies添加依赖类型和自动装配的值。
     beanFactory.registerResolvableDependency(BeanFactory.class, beanFactory);
     beanFactory.registerResolvableDependency(ResourceLoader.class, this);
     beanFactory.registerResolvableDependency(ApplicationEventPublisher.class, this);
     beanFactory.registerResolvableDependency(ApplicationContext.class, this);
 
     // Register early post-processor for detecting inner beans as ApplicationListeners.
+    //beanPostProcessors集合中添加ApplicationListenerDetector处理器。
     beanFactory.addBeanPostProcessor(new ApplicationListenerDetector(this));
 
     // Detect a LoadTimeWeaver and prepare for weaving, if found.
+    //判断beanFactory是否包含LoadTimeWeaver。如果有的话就添加对应的processor。
     if (beanFactory.containsBean(LOAD_TIME_WEAVER_BEAN_NAME)) {
         beanFactory.addBeanPostProcessor(new LoadTimeWeaverAwareProcessor(beanFactory));
         // Set a temporary ClassLoader for type matching.
@@ -573,13 +579,19 @@ protected void prepareBeanFactory(ConfigurableListableBeanFactory beanFactory) {
     }
 
     // Register default environment beans.
+    //判断beanFactory是否包含environment。
     if (!beanFactory.containsLocalBean(ENVIRONMENT_BEAN_NAME)) {
+        //注册单例的environment对象
         beanFactory.registerSingleton(ENVIRONMENT_BEAN_NAME, getEnvironment());
     }
+    //判断beanFactory是否包含systemProperties。
     if (!beanFactory.containsLocalBean(SYSTEM_PROPERTIES_BEAN_NAME)) {
+        //注册单例的systemProperties对象
         beanFactory.registerSingleton(SYSTEM_PROPERTIES_BEAN_NAME, getEnvironment().getSystemProperties());
     }
+    //判断beanFactory是否包含systemEnvironment。
     if (!beanFactory.containsLocalBean(SYSTEM_ENVIRONMENT_BEAN_NAME)) {
+        //注册单例的systemEnvironment对象。
         beanFactory.registerSingleton(SYSTEM_ENVIRONMENT_BEAN_NAME, getEnvironment().getSystemEnvironment());
     }
 }
