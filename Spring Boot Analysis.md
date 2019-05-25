@@ -485,10 +485,11 @@ public void refresh() throws BeansException, IllegalStateException {
         prepareBeanFactory(beanFactory);
 
         try {
-            // Allows post-processing of the bean factory in context subclasses.上下文是AnnotationConfigApplicationContext时，没有重写该方法，所以无操作上下文是AnnotationConfigServletWebServerApplicationContext时，进入该重写方法，创建WebApplicationContextServletContextAwareProcessor实例并且添加到beanFactory的beanPostProcessors中
+            // Allows post-processing of the bean factory in context subclasses.上下文是AnnotationConfigApplicationContext时，没有重写该方法，所以无操作，上下文是AnnotationConfigServletWebServerApplicationContext时，进入该重写方法，创建WebApplicationContextServletContextAwareProcessor实例并且添加到beanFactory的beanPostProcessors中
             postProcessBeanFactory(beanFactory);
 
             // Invoke factory processors registered as beans in the context.
+            // 代码太多了，看了半天，基本上是这样的，扫描所有的@Component注解的类，然后生成BeanDefinition并且注册到beanFactory中去。
             invokeBeanFactoryPostProcessors(beanFactory);
 
             // Register bean processors that intercept bean creation.
