@@ -493,6 +493,7 @@ public void refresh() throws BeansException, IllegalStateException {
             invokeBeanFactoryPostProcessors(beanFactory);
 
             // Register bean processors that intercept bean creation.
+            // 找出所有类型为BeanPostProcessor的bean,然后创建这些bean并且全部注册到beanFactory中，可以说这一步就是BeanPostProcessor实例化然后注册的过程。
             registerBeanPostProcessors(beanFactory);
 
             // Initialize message source for this context.
