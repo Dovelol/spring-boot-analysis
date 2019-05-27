@@ -497,12 +497,15 @@ public void refresh() throws BeansException, IllegalStateException {
             registerBeanPostProcessors(beanFactory);
 
             // Initialize message source for this context.
+            // 初始化消息源,判断beanFactory中是否有名字为messageSource的bean，如果没有，新建DelegatingMessageSource类作为bean，如果有的话，从beanFactory中获取。
             initMessageSource();
 
             // Initialize event multicaster for this context.
+            // 初始化ApplicationEventMulticaster，如果beanFactory中不存在的话实例化SimpleApplicationEventMulticaster，如果存在使用从beanFactory中获取的。
             initApplicationEventMulticaster();
 
             // Initialize other special beans in specific context subclasses.
+            // #2
             onRefresh();
 
             // Check for listener beans and register them.
@@ -596,6 +599,45 @@ protected void prepareBeanFactory(ConfigurableListableBeanFactory beanFactory) {
         //注册单例的systemEnvironment对象。
         beanFactory.registerSingleton(SYSTEM_ENVIRONMENT_BEAN_NAME, getEnvironment().getSystemEnvironment());
     }
+}
+
+
+// #2-1
+@Override
+protected void onRefresh() {
+    // 初始化themeSource，如果beanFactory中不存在的话实例化ResourceBundleThemeSource，如果存在使用从beanFactory中获取的。
+    super.onRefresh();
+    try {
+        // #2-1-1 创建web服务
+        createWebServer();
+    }
+    catch (Throwable ex) {
+        throw new ApplicationContextException("Unable to start web server", ex);
+    }
+}
+
+// #2-1-1
+private void createWebServer() {
+    // 获取WebServer对象。
+    WebServer webServer = this.webServer;
+    // 获取ServletContext对象。
+    ServletContext servletContext = getServletContext();
+    // 如果上述两个对象为null。
+    if (webServer == null && servletContext == null) {
+        // 获取ServletWebServerFactory对象，本例中用的是tomcat，所以实例化tomcatServletWebServerFactory对象。
+        ServletWebServerFactory factory = getWebServerFactory();
+        this.webServer = factory.getWebServer(getSelfInitializer());
+    }
+    else if (servletContext != null) {
+        try {
+            getSelfInitializer().onStartup(servletContext);
+        }
+        catch (ServletException ex) {
+            throw new ApplicationContextException("Cannot initialize servlet context",
+                                                  ex);
+        }
+    }
+    initPropertySources();
 }
 
 
