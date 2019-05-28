@@ -651,7 +651,7 @@ public WebServer getWebServer(ServletContextInitializer... initializers) {
         : createTempDir("tomcat");
     // 设置tomcat对象的basedir属性为临时目录。
     tomcat.setBaseDir(baseDir.getAbsolutePath());
-    //
+    // 创建连接器对象，反射创建this.protocol默认的Http11NioProtocol对象，连接器的作用是处理外部请求。
     Connector connector = new Connector(this.protocol);
     tomcat.getService().addConnector(connector);
     customizeConnector(connector);
