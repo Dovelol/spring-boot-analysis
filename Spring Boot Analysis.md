@@ -626,6 +626,7 @@ private void createWebServer() {
     if (webServer == null && servletContext == null) {
         // 获取ServletWebServerFactory对象，本例中用的是tomcat，所以实例化tomcatServletWebServerFactory对象。
         ServletWebServerFactory factory = getWebServerFactory();
+        // #2-1-1-1
         this.webServer = factory.getWebServer(getSelfInitializer());
     }
     else if (servletContext != null) {
@@ -639,6 +640,31 @@ private void createWebServer() {
     }
     initPropertySources();
 }
+
+// #2-1-1-1  TomcatServletWebServerFactory#getwebServer
+@Override
+public WebServer getWebServer(ServletContextInitializer... initializers) {
+    // 创建tomcat实例。 
+    Tomcat tomcat = new Tomcat();
+    // 创建一个临时目录，并且在jvm退出的时候删掉，调用的是tempDir.deleteOnExit()方法。
+    File baseDir = (this.baseDirectory != null) ? this.baseDirectory
+        : createTempDir("tomcat");
+    // 设置tomcat对象的basedir属性为临时目录。
+    tomcat.setBaseDir(baseDir.getAbsolutePath());
+    //
+    Connector connector = new Connector(this.protocol);
+    tomcat.getService().addConnector(connector);
+    customizeConnector(connector);
+    tomcat.setConnector(connector);
+    tomcat.getHost().setAutoDeploy(false);
+    configureEngine(tomcat.getEngine());
+    for (Connector additionalConnector : this.additionalTomcatConnectors) {
+        tomcat.getService().addConnector(additionalConnector);
+    }
+    prepareContext(tomcat.getHost(), initializers);
+    return getTomcatWebServer(tomcat);
+}
+
 
 
 
