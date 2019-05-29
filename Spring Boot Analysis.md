@@ -653,7 +653,9 @@ public WebServer getWebServer(ServletContextInitializer... initializers) {
     tomcat.setBaseDir(baseDir.getAbsolutePath());
     // 创建连接器对象，反射创建this.protocol默认的Http11NioProtocol对象，连接器的作用是处理外部请求。
     Connector connector = new Connector(this.protocol);
+    // 首先实例化server=new StandardServer()，设置catalina.home和catalina.base的值，然后实例化service = new StandardService()，将server对象添加到service中，server中创建一个Service的数组，将service对象放入数组中，tomcat.getService()是获取数组中的第一个service，然后添加到connector对象中，service中创建一个Connector数组，将connector对象放入数组中。
     tomcat.getService().addConnector(connector);
+    // connector定制化设置，比如设置端口号、最大线程数等参数。
     customizeConnector(connector);
     tomcat.setConnector(connector);
     tomcat.getHost().setAutoDeploy(false);
