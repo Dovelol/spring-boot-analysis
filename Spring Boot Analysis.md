@@ -657,12 +657,17 @@ public WebServer getWebServer(ServletContextInitializer... initializers) {
     tomcat.getService().addConnector(connector);
     // connector定制化设置，比如设置端口号、最大线程数等参数。
     customizeConnector(connector);
+    // 如果connector不在service中，那么就设置一下。
     tomcat.setConnector(connector);
+    // 首先创建Engine和Host对象，然后设置host的autoDeploy自动部署为false。
     tomcat.getHost().setAutoDeploy(false);
+    // 设置engine的backgroundProcessorDelay属性，如果engineValves不为空，那么engine添加所有的valves。
     configureEngine(tomcat.getEngine());
+    // 如果additionalTomcatConnectors不为空，service添加所有的附加连接器。
     for (Connector additionalConnector : this.additionalTomcatConnectors) {
         tomcat.getService().addConnector(additionalConnector);
     }
+    // 
     prepareContext(tomcat.getHost(), initializers);
     return getTomcatWebServer(tomcat);
 }
