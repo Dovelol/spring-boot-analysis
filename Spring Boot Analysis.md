@@ -667,8 +667,9 @@ public WebServer getWebServer(ServletContextInitializer... initializers) {
     for (Connector additionalConnector : this.additionalTomcatConnectors) {
         tomcat.getService().addConnector(additionalConnector);
     }
-    // 
+    // 创建TomcatEmbeddedContext上下文对象，并且添加到host的children集合中。
     prepareContext(tomcat.getHost(), initializers);
+    // 启动tomcat所有的服务容器，从上到下是server->service->engine->connector
     return getTomcatWebServer(tomcat);
 }
 
