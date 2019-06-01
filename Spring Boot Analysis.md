@@ -669,7 +669,7 @@ public WebServer getWebServer(ServletContextInitializer... initializers) {
     }
     // 创建TomcatEmbeddedContext上下文对象，并且添加到host的children集合中。
     prepareContext(tomcat.getHost(), initializers);
-    // 启动tomcat所有的服务容器，从上到下是server->service->engine->connector
+    // 启动tomcat所有的服务容器，从上到下是server->service->engine->connector，先是挨个调用init方法，然后在挨个调用start方法，这里有个地方是在engine中调用host方法的时候是用的线程池InlineExecutorService调用的host的start方法。
     return getTomcatWebServer(tomcat);
 }
 
