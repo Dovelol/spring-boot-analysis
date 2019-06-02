@@ -505,13 +505,15 @@ public void refresh() throws BeansException, IllegalStateException {
             initApplicationEventMulticaster();
 
             // Initialize other special beans in specific context subclasses.
-            // #2
+            // #2初始化内置的tomcat服务。
             onRefresh();
 
             // Check for listener beans and register them.
+            // 没看懂啥操作，就是把一些listener添加到defaultRetriever.applicationListeners和defaultRetriever.applicationListenerBeans中去。
             registerListeners();
 
             // Instantiate all remaining (non-lazy-init) singletons.
+            // 
             finishBeanFactoryInitialization(beanFactory);
 
             // Last step: publish corresponding event.
@@ -669,7 +671,7 @@ public WebServer getWebServer(ServletContextInitializer... initializers) {
     }
     // 创建TomcatEmbeddedContext上下文对象，并且添加到host的children集合中。
     prepareContext(tomcat.getHost(), initializers);
-    // 启动tomcat所有的服务容器，从上到下是server->service->engine->connector，先是挨个调用init方法，然后在挨个调用start方法，这里有个地方是在engine中调用host方法的时候是用的线程池InlineExecutorService调用的host的start方法。同理，host中保存的StandardEngine[Tomcat].StandardHost[localhost].TomcatEmbeddedContext[]也是通过这种方式启动的。
+    // 启动tomcat所有的服务容器，从上到下是server->service->engine->connector，先是挨个调用init方法，然后在挨个调用start方法，这里有个地方是在engine中调用host方法的时候是用的线程池InlineExecutorService调用的host的start方法。同理，host中保存的StandardEngine[Tomcat].StandardHost[localhost].TomcatEmbeddedContext[]也是通过这种方式启动的。设置ACWSAC中的变量servletContext=applicationContextFacade对象。
     return getTomcatWebServer(tomcat);
 }
 
