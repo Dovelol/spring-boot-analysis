@@ -513,7 +513,7 @@ public void refresh() throws BeansException, IllegalStateException {
             registerListeners();
 
             // Instantiate all remaining (non-lazy-init) singletons.
-            // 
+            // #3
             finishBeanFactoryInitialization(beanFactory);
 
             // Last step: publish corresponding event.
@@ -675,6 +675,40 @@ public WebServer getWebServer(ServletContextInitializer... initializers) {
     return getTomcatWebServer(tomcat);
 }
 
+# 3
+protected void finishBeanFactoryInitialization(ConfigurableListableBeanFactory beanFactory) {
+    // Initialize conversion service for this context.
+    // 如果已经注册了conversionService，那么就创建。
+    if (beanFactory.containsBean(CONVERSION_SERVICE_BEAN_NAME) &&
+        beanFactory.isTypeMatch(CONVERSION_SERVICE_BEAN_NAME, ConversionService.class)) {
+        beanFactory.setConversionService(
+            beanFactory.getBean(CONVERSION_SERVICE_BEAN_NAME, ConversionService.class));
+    }
+
+    // Register a default embedded value resolver if no bean post-processor
+    // (such as a PropertyPlaceholderConfigurer bean) registered any before:
+    // at this point, primarily for resolution in annotation attribute values.
+    // 目的不明。
+    if (!beanFactory.hasEmbeddedValueResolver()) {
+        beanFactory.addEmbeddedValueResolver(strVal -> getEnvironment().resolvePlaceholders(strVal));
+    }
+
+    // Initialize LoadTimeWeaverAware beans early to allow for registering their transformers early.
+    // 实现了LoadTimeWeaverAware接口的类首先创建。
+    String[] weaverAwareNames = beanFactory.getBeanNamesForType(LoadTimeWeaverAware.class, false, false);
+    for (String weaverAwareName : weaverAwareNames) {
+        getBean(weaverAwareName);
+    }
+
+    // Stop using the temporary ClassLoader for type matching.
+    beanFactory.setTempClassLoader(null);
+
+    // Allow for caching all bean definition metadata, not expecting further changes.
+    beanFactory.freezeConfiguration();
+
+    // Instantiate all remaining (non-lazy-init) singletons.
+    beanFactory.preInstantiateSingletons();
+}
 
 
 
