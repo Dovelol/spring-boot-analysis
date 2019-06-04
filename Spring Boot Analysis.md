@@ -701,13 +701,79 @@ protected void finishBeanFactoryInitialization(ConfigurableListableBeanFactory b
     }
 
     // Stop using the temporary ClassLoader for type matching.
+    // 停止使用临时的类加载器。
     beanFactory.setTempClassLoader(null);
 
     // Allow for caching all bean definition metadata, not expecting further changes.
+    // this.configurationFrozen = true;this.frozenBeanDefinitionNames = StringUtils.toStringArray(this.beanDefinitionNames);设置属性。
     beanFactory.freezeConfiguration();
 
     // Instantiate all remaining (non-lazy-init) singletons.
+    // #3-1
     beanFactory.preInstantiateSingletons();
+}
+
+// #3-1 DefaultListableBeanFactory类
+@Override
+public void preInstantiateSingletons() throws BeansException {
+    if (logger.isTraceEnabled()) {
+        logger.trace("Pre-instantiating singletons in " + this);
+    }
+
+    // Iterate over a copy to allow for init methods which in turn register new bean definitions.
+    // While this may not be part of the regular factory bootstrap, it does otherwise work fine.
+    // 创建list存储所有的beanDefinitionNames。
+    List<String> beanNames = new ArrayList<>(this.beanDefinitionNames);
+
+    // Trigger initialization of all non-lazy singleton beans...
+    // 遍历创建所有的非懒加载的单例类。
+    for (String beanName : beanNames) {
+        // 根据beanName获取bean的RootBeanDefinition。
+        RootBeanDefinition bd = getMergedLocalBeanDefinition(beanName);
+        // 判断bean是非抽象的，单例，非懒加载。
+        if (!bd.isAbstract() && bd.isSingleton() && !bd.isLazyInit()) {
+            // 判断是不是FactoryBean
+            if (isFactoryBean(beanName)) {
+                Object bean = getBean(FACTORY_BEAN_PREFIX + beanName);
+                if (bean instanceof FactoryBean) {
+                    final FactoryBean<?> factory = (FactoryBean<?>) bean;
+                    boolean isEagerInit;
+                    if (System.getSecurityManager() != null && factory instanceof SmartFactoryBean) {
+                        isEagerInit = AccessController.doPrivileged((PrivilegedAction<Boolean>)
+                                                                    ((SmartFactoryBean<?>) factory)::isEagerInit,
+                                                                    getAccessControlContext());
+                    }
+                    else {
+                        isEagerInit = (factory instanceof SmartFactoryBean &&
+                                       ((SmartFactoryBean<?>) factory).isEagerInit());
+                    }
+                    if (isEagerInit) {
+                        getBean(beanName);
+                    }
+                }
+            }
+            else {
+                getBean(beanName);
+            }
+        }
+    }
+
+    // Trigger post-initialization callback for all applicable beans...
+    for (String beanName : beanNames) {
+        Object singletonInstance = getSingleton(beanName);
+        if (singletonInstance instanceof SmartInitializingSingleton) {
+            final SmartInitializingSingleton smartSingleton = (SmartInitializingSingleton) singletonInstance;
+            if (System.getSecurityManager() != null) {
+                AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
+                    smartSingleton.afterSingletonsInstantiated();
+                    return null;
+                }, getAccessControlContext());
+            }
+            else {
+                smartSingleton.afterSingletonsInstantiated();
+            }
+        }
+    }
 }
 
 
