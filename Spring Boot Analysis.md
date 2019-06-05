@@ -734,6 +734,7 @@ public void preInstantiateSingletons() throws BeansException {
         if (!bd.isAbstract() && bd.isSingleton() && !bd.isLazyInit()) {
             // 判断是不是FactoryBean
             if (isFactoryBean(beanName)) {
+                // 创建对应的bean对象并且执行各种初始化逻辑。
                 Object bean = getBean(FACTORY_BEAN_PREFIX + beanName);
                 if (bean instanceof FactoryBean) {
                     final FactoryBean<?> factory = (FactoryBean<?>) bean;
@@ -753,6 +754,7 @@ public void preInstantiateSingletons() throws BeansException {
                 }
             }
             else {
+                // 创建对应的bean对象并且执行各种初始化逻辑。
                 getBean(beanName);
             }
         }
@@ -760,6 +762,7 @@ public void preInstantiateSingletons() throws BeansException {
 
     // Trigger post-initialization callback for all applicable beans...
     for (String beanName : beanNames) {
+        // 获取对应的bean。
         Object singletonInstance = getSingleton(beanName);
         if (singletonInstance instanceof SmartInitializingSingleton) {
             final SmartInitializingSingleton smartSingleton = (SmartInitializingSingleton) singletonInstance;
