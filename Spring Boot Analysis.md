@@ -513,10 +513,11 @@ public void refresh() throws BeansException, IllegalStateException {
             registerListeners();
 
             // Instantiate all remaining (non-lazy-init) singletons.
-            // #3
+            // #3完成bean的创建。
             finishBeanFactoryInitialization(beanFactory);
 
             // Last step: publish corresponding event.
+            // 
             finishRefresh();
         }
 
@@ -764,6 +765,7 @@ public void preInstantiateSingletons() throws BeansException {
     for (String beanName : beanNames) {
         // 获取对应的bean。
         Object singletonInstance = getSingleton(beanName);
+        // 如果实例是SmartInitializingSingleton的实现类。
         if (singletonInstance instanceof SmartInitializingSingleton) {
             final SmartInitializingSingleton smartSingleton = (SmartInitializingSingleton) singletonInstance;
             if (System.getSecurityManager() != null) {
@@ -773,6 +775,7 @@ public void preInstantiateSingletons() throws BeansException {
                 }, getAccessControlContext());
             }
             else {
+                // 执行创建完后的逻辑。
                 smartSingleton.afterSingletonsInstantiated();
             }
         }
