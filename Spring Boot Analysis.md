@@ -517,7 +517,7 @@ public void refresh() throws BeansException, IllegalStateException {
             finishBeanFactoryInitialization(beanFactory);
 
             // Last step: publish corresponding event.
-            // 
+            // 发布ContextRefreshedEvent事件，对应的listener执行相应的处理。
             finishRefresh();
         }
 
@@ -710,7 +710,7 @@ protected void finishBeanFactoryInitialization(ConfigurableListableBeanFactory b
     beanFactory.freezeConfiguration();
 
     // Instantiate all remaining (non-lazy-init) singletons.
-    // #3-1
+    // #3-1 创建所有bean。
     beanFactory.preInstantiateSingletons();
 }
 
