@@ -517,7 +517,7 @@ public void refresh() throws BeansException, IllegalStateException {
             finishBeanFactoryInitialization(beanFactory);
 
             // Last step: publish corresponding event.
-            // 发布ContextRefreshedEvent事件，对应的listener执行相应的处理。
+            // 发布ContextRefreshedEvent事件，对应的listener执行相应的处理。并且启动web容器webServer.start()，也就是说调用bind方法，正式开启端口监听是在这一部进行的，之后创建名称为http-nio-8080-exec-xxx的线程组，这个是之后接受请求后的工作线程。然后创建http-nio-8080-ClientPoller-0的线程。最后创建http-nio-8080-Acceptor-0的线程。
             finishRefresh();
         }
 
