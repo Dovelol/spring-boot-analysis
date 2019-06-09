@@ -430,10 +430,11 @@ protected void postProcessApplicationContext(ConfigurableApplicationContext cont
 
 //#4 
 private void refreshContext(ConfigurableApplicationContext context) {
-    //#4-1
+    // #4-1 启动上下文context 
     refresh(context);
     if (this.registerShutdownHook) {
         try {
+            // 注册一个钩子可以在jvm销毁的时候触发doClose操作，发送一个ContextClosedEvent类型的事件，销毁注册的bean，关闭beanFactory，也就是设置setSerializationId=null，关闭tomcat相关的容器。
             context.registerShutdownHook();
         }
         catch (AccessControlException ex) {
