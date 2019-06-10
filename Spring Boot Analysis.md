@@ -96,14 +96,18 @@ public ConfigurableApplicationContext run(String... args) {
         //#3 上下文准备工作，主要是设置环境变量，执行所有Initializer的方法，还有就是注册一些内置默认的bean。
         prepareContext(context, environment, listeners, applicationArguments,
                 printedBanner);
-        //#4
+        //#4 初始化spring context。
         refreshContext(context);
+        // 初始化完成后的操作。
         afterRefresh(context, applicationArguments);
+        // 结束统计。
         stopWatch.stop();
+        // 打印工程启动时间。
         if (this.logStartupInfo) {
             new StartupInfoLogger(this.mainApplicationClass)
                     .logStarted(getApplicationLog(), stopWatch);
         }
+        // 发布ApplicationStartedEvent类型的事件。
         listeners.started(context);
         callRunners(context, applicationArguments);
     }
