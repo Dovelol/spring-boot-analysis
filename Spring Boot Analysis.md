@@ -109,6 +109,7 @@ public ConfigurableApplicationContext run(String... args) {
         }
         // 发布ApplicationStartedEvent类型的事件。
         listeners.started(context);
+        // 调用ApplicationRunner和CommandLineRunner实现类的run方法，可以实现这两个接口来完成启动后的操作，传入的是ApplicationArguments这个参数。
         callRunners(context, applicationArguments);
     }
     catch (Throwable ex) {
@@ -117,6 +118,7 @@ public ConfigurableApplicationContext run(String... args) {
     }
 
     try {
+        // 发布ApplicationReadyEvent类型的事件，这里也是常规spring boot启动的最后一步。
         listeners.running(context);
     }
     catch (Throwable ex) {
