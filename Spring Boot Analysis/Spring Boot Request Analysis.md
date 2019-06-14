@@ -163,8 +163,9 @@ protected boolean setSocketOptions(SocketChannel socket) {
 
 // #1-1 NioEndpoint#register
 public void register(final NioChannel socket) {
-    //
+    // 设置Poller对象。
     socket.setPoller(this);
+    // 创建一个包装类对象，来装饰
     NioSocketWrapper ka = new NioSocketWrapper(socket, NioEndpoint.this);
     socket.setSocketWrapper(ka);
     ka.setPoller(this);
