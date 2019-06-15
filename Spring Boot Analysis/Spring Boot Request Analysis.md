@@ -1,4 +1,4 @@
-# Spring Boot Request Analysis （2.1.4.RELEASE|Tomcat）
+# Spring Boot Request Analysis （2.1.4.RELEASE|Tomcat|NIO）
 
 ## Acceptor类的`run`方法
 
@@ -81,8 +81,9 @@ public void run() {
             if (endpoint.isRunning() && !endpoint.isPaused()) {
                 // setSocketOptions() will hand the socket off to
                 // an appropriate processor if successful
-                // #1 
+                // #1 创建一个NioChannel对象处理连接。
                 if (!endpoint.setSocketOptions(socket)) {
+                    // 出现异常就关闭连接。
                     endpoint.closeSocket(socket);
                 }
             } else {
@@ -165,18 +166,29 @@ protected boolean setSocketOptions(SocketChannel socket) {
 public void register(final NioChannel socket) {
     // 设置Poller对象。
     socket.setPoller(this);
-    // 创建一个包装类对象，来装饰
+    // 创建一个包装类对象，根据不同的I/O模型有3种wrapper，作用是read请求信息。
     NioSocketWrapper ka = new NioSocketWrapper(socket, NioEndpoint.this);
+    // socket设置wrapper对象。
     socket.setSocketWrapper(ka);
+    // wrapper设置对应的poller对象，这样相当于把poller绑在了wrapper上。
     ka.setPoller(this);
+    // 设置read超时时间。
     ka.setReadTimeout(getConnectionTimeout());
+    // 设置write的超时时间。
     ka.setWriteTimeout(getConnectionTimeout());
+    // 设置最大的长连接个数。
     ka.setKeepAliveLeft(NioEndpoint.this.getMaxKeepAliveRequests());
+    // 设置是否启用ssl。
     ka.setSecure(isSSLEnabled());
+    // 从SynchronizedStack<PollerEvent>从取出一个PollerEvent对象，目的是做了一个缓存，这样减少了创建对象的开销，每个Poller对象维护一个events队列。
     PollerEvent r = eventCache.pop();
+    // 设置监听的事件类型为OP_READ。
     ka.interestOps(SelectionKey.OP_READ);//this is what OP_REGISTER turns into.
+    // 如果没有从缓存中取到PollerEvent对象，那么就创建一个。
     if ( r==null) r = new PollerEvent(socket,ka,OP_REGISTER);
+    // 如果pop获取到了PollerEvent对象，那么就重置里面的属性，这样才可以重新使用。
     else r.reset(socket,ka,OP_REGISTER);
+    // 添加到SynchronizedQueue<PollerEvent>中去，
     addEvent(r);
 }
 
