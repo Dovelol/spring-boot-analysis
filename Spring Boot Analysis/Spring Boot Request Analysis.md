@@ -32,7 +32,7 @@ public void run() {
         }
 		// endpoint已经关闭。
         if (!endpoint.isRunning()) {
-            // 退出循环。
+            // 退 出循环。
             break;
         }
         // 修改Acceptor的state为running。
@@ -191,10 +191,156 @@ public void register(final NioChannel socket) {
     // 添加到SynchronizedQueue<PollerEvent>中去，
     addEvent(r);
 }
-
 ```
 
 
+
+## Poller类的`run`方法
+
+```java
+@Override
+public void run() {
+    // Loop until destroy() is called
+    while (true) {
+		// 设置hasEvents标识属性。
+        boolean hasEvents = false;
+
+        try {
+            // 如果没有关闭。
+            if (!close) {
+                // #1
+                hasEvents = events();
+                if (wakeupCounter.getAndSet(-1) > 0) {
+                    //if we are here, means we have other stuff to do
+                    //do a non blocking select
+                    keyCount = selector.selectNow();
+                } else {
+                    keyCount = selector.select(selectorTimeout);
+                }
+                wakeupCounter.set(0);
+            }
+            if (close) {
+                events();
+                timeout(0, false);
+                try {
+                    selector.close();
+                } catch (IOException ioe) {
+                    log.error(sm.getString("endpoint.nio.selectorCloseFail"), ioe);
+                }
+                break;
+            }
+        } catch (Throwable x) {
+            ExceptionUtils.handleThrowable(x);
+            log.error(sm.getString("endpoint.nio.selectorLoopError"), x);
+            continue;
+        }
+        //either we timed out or we woke up, process events first
+        if ( keyCount == 0 ) hasEvents = (hasEvents | events());
+
+        Iterator<SelectionKey> iterator =
+            keyCount > 0 ? selector.selectedKeys().iterator() : null;
+        // Walk through the collection of ready keys and dispatch
+        // any active event.
+        while (iterator != null && iterator.hasNext()) {
+            SelectionKey sk = iterator.next();
+            NioSocketWrapper attachment = (NioSocketWrapper)sk.attachment();
+            // Attachment may be null if another thread has called
+            // cancelledKey()
+            if (attachment == null) {
+                iterator.remove();
+            } else {
+                iterator.remove();
+                processKey(sk, attachment);
+            }
+        }//while
+
+        //process timeouts
+        timeout(keyCount,hasEvents);
+    }//while
+
+    getStopLatch().countDown();
+}
+
+// #1 NioEndpoint#PollerEvent#events
+public boolean events() {
+    // 设置返回结果为false。
+    boolean result = false;
+	// 创建PollerEvent变量。
+    PollerEvent pe = null;
+    // 循环条件，events中有
+    for (int i = 0, size = events.size(); i < size && (pe = events.poll()) != null; i++ ) {
+        // 设置返回结果为true。
+        result = true;
+        try {
+            // #1-1 调用PollerEvent对象的run方法。
+            pe.run();
+            pe.reset();
+            if (running && !paused) {
+                eventCache.push(pe);
+            }
+        } catch ( Throwable x ) {
+            log.error(sm.getString("endpoint.nio.pollerEventError"), x);
+        }
+    }
+
+    return result;
+}
+
+// #1-1 NioEndpoint#PollerEvent#run
+@Override
+public void run() {
+    // 如果interestOps等于OP_REGISTER，这个值在Poller.register的时候设置的就是OP_REGISTER
+    if (interestOps == OP_REGISTER) {
+        try {
+            // 获取NioChannel中的SocketChannel类型的对象，然后调用register方法，目前个人理解是将SocketChannel类型的对象和socketWrapper一起绑定到selector上，这样selector就可以获取到对应的channel。
+            socket.getIOChannel().register(
+                socket.getPoller().getSelector(), SelectionKey.OP_READ, socketWrapper);
+        } catch (Exception x) {
+            log.error(sm.getString("endpoint.nio.registerFail"), x);
+        }
+    } else {
+        // 从NioChannel中获取SelectionKey。
+        final SelectionKey key = socket.getIOChannel().keyFor(socket.getPoller().getSelector());
+        try {
+            // 如果key是空的。
+            if (key == null) {
+                // The key was cancelled (e.g. due to socket closure)
+                // and removed from the selector while it was being
+                // processed. Count down the connections at this point
+                // since it won't have been counted down when the socket
+                // closed.
+                // 获取到NioEndpoint对象，然后进行LimitLatch的减1操作。
+                socket.socketWrapper.getEndpoint().countDownConnection();
+                // 设置close对象为true。
+                ((NioSocketWrapper) socket.socketWrapper).closed = true;
+            } else {
+                // 从SelectionKey中获取NioSocketWrapper对象。
+                final NioSocketWrapper socketWrapper = (NioSocketWrapper) key.attachment();
+                // 如果socketWrapper不是空。
+                if (socketWrapper != null) {
+                    //we are registering the key to start with, reset the fairness counter.
+                    // 异或操作。
+                    int ops = key.interestOps() | interestOps;
+                    // 设置新的interestOps属性的值。
+                    socketWrapper.interestOps(ops);
+                    // SelectionKey设置新的感兴趣的操作。
+                    key.interestOps(ops);
+                } else {
+                    // 关闭连接，并且回收processor对象。
+                    socket.getPoller().cancelledKey(key);
+                }
+            }
+        } catch (CancelledKeyException ckx) {
+            try {
+                // 关闭连接，并且回收processor对象。
+                socket.getPoller().cancelledKey(key);
+            } catch (Exception ignore) {}
+        }
+    }
+}
+
+
+```
 
 
 
