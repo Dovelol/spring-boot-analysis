@@ -208,21 +208,29 @@ public void run() {
         try {
             // 如果没有关闭。
             if (!close) {
-                // #1
+                // #1 从队列中获取一个PollerEvent对象，表明有新的连接待处理。
                 hasEvents = events();
+                // 说明同时有好几个PollerEvent添加到队列中。
                 if (wakeupCounter.getAndSet(-1) > 0) {
                     //if we are here, means we have other stuff to do
                     //do a non blocking select
+                    // 非阻塞的select，如果没有channel准备好，那就返回0。
                     keyCount = selector.selectNow();
                 } else {
+                    // 阻塞的select，等待时间为selectorTimeout。
                     keyCount = selector.select(selectorTimeout);
                 }
+                // 设置唤醒数量为0。
                 wakeupCounter.set(0);
             }
+            // 如果关闭的话。
             if (close) {
+                // 调用events关闭当前连接。
                 events();
+                // 关闭连接的后续处理。
                 timeout(0, false);
                 try {
+                    // 关闭选择器。
                     selector.close();
                 } catch (IOException ioe) {
                     log.error(sm.getString("endpoint.nio.selectorCloseFail"), ioe);
@@ -235,6 +243,7 @@ public void run() {
             continue;
         }
         //either we timed out or we woke up, process events first
+        // 如果keyCount等于0，hasEvents和events()返回值做异或操作后赋值给hasEvents。
         if ( keyCount == 0 ) hasEvents = (hasEvents | events());
 
         Iterator<SelectionKey> iterator =
@@ -274,15 +283,18 @@ public boolean events() {
         try {
             // #1-1 调用PollerEvent对象的run方法。
             pe.run();
+            // 重置当前PollerEvent对象。
             pe.reset();
+            // 如果正在运行并且没有暂停。
             if (running && !paused) {
+                // 把PollerEvent对象重新添加到eventCache中，以便下个请求使用。
                 eventCache.push(pe);
             }
         } catch ( Throwable x ) {
             log.error(sm.getString("endpoint.nio.pollerEventError"), x);
         }
     }
-
+	// 返回结果。
     return result;
 }
 
