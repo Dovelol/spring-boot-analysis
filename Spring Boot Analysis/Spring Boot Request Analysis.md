@@ -245,20 +245,27 @@ public void run() {
         //either we timed out or we woke up, process events first
         // 如果keyCount等于0，hasEvents和events()返回值做异或操作后赋值给hasEvents。
         if ( keyCount == 0 ) hasEvents = (hasEvents | events());
-
+		// 获取selector中已经准备好的数据。
         Iterator<SelectionKey> iterator =
             keyCount > 0 ? selector.selectedKeys().iterator() : null;
         // Walk through the collection of ready keys and dispatch
         // any active event.
+        // 如果iterator不为空且有值。
         while (iterator != null && iterator.hasNext()) {
+            // 获取SelectionKey对象。
             SelectionKey sk = iterator.next();
+            // 从SelectionKey中获取注册的NioSocketWrapper对象。
             NioSocketWrapper attachment = (NioSocketWrapper)sk.attachment();
             // Attachment may be null if another thread has called
             // cancelledKey()
+            // 如果NioSocketWrapper对象为空。
             if (attachment == null) {
+                // 从迭代器中删除。
                 iterator.remove();
             } else {
+                // 从迭代器中删除。
                 iterator.remove();
+                // #2 
                 processKey(sk, attachment);
             }
         }//while
@@ -350,6 +357,51 @@ public void run() {
         }
     }
 }
+
+// #2 NioEndpoint#Poller#processKey
+protected void processKey(SelectionKey sk, NioSocketWrapper attachment) {
+    try {
+        // 连接是否关闭。
+        if ( close ) {
+            // 取消操作。
+            cancelledKey(sk);
+        } else if ( sk.isValid() && attachment != null ) {
+            // 如果SelectionKey是可读或者可写的。
+            if (sk.isReadable() || sk.isWritable() ) {
+                // 
+                if ( attachment.getSendfileData() != null ) {
+                    processSendfile(sk,attachment, false);
+                } else {
+                    unreg(sk, attachment, sk.readyOps());
+                    boolean closeSocket = false;
+                    // Read goes before write
+                    if (sk.isReadable()) {
+                        if (!processSocket(attachment, SocketEvent.OPEN_READ, true)) {
+                            closeSocket = true;
+                        }
+                    }
+                    if (!closeSocket && sk.isWritable()) {
+                        if (!processSocket(attachment, SocketEvent.OPEN_WRITE, true)) {
+                            closeSocket = true;
+                        }
+                    }
+                    if (closeSocket) {
+                        cancelledKey(sk);
+                    }
+                }
+            }
+        } else {
+            //invalid key
+            cancelledKey(sk);
+        }
+    } catch ( CancelledKeyException ckx ) {
+        cancelledKey(sk);
+    } catch (Throwable t) {
+        ExceptionUtils.handleThrowable(t);
+        log.error(sm.getString("endpoint.nio.keyProcessingError"), t);
+    }
+}
+
 
 
 ```
