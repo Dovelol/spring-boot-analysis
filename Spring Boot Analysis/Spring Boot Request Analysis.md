@@ -265,7 +265,7 @@ public void run() {
             } else {
                 // 从迭代器中删除。
                 iterator.remove();
-                // #2 
+                // #2 处理请求。
                 processKey(sk, attachment);
             }
         }//while
@@ -368,20 +368,29 @@ protected void processKey(SelectionKey sk, NioSocketWrapper attachment) {
         } else if ( sk.isValid() && attachment != null ) {
             // 如果SelectionKey是可读或者可写的。
             if (sk.isReadable() || sk.isWritable() ) {
-                // 
+                // 获取sendfileData的值，判断是否不为空。
                 if ( attachment.getSendfileData() != null ) {
+                    // 没看懂。
                     processSendfile(sk,attachment, false);
                 } else {
+                    // 没看懂是干啥的，设置了一下sk和attachment的interestOps值。
                     unreg(sk, attachment, sk.readyOps());
+                    // 创建closeSocket变量。
                     boolean closeSocket = false;
                     // Read goes before write
+                    // 如果SelectionKey是可读的。
                     if (sk.isReadable()) {
+                        // 创建或者获取缓存的SocketProcessorBase类对象，然后用catalina-exec线程池去执行任务，也就是说这个时候把任务交给线程池去完成整个后续的请求处理。
                         if (!processSocket(attachment, SocketEvent.OPEN_READ, true)) {
+                            // 出现异常，设置closeSocket为true。
                             closeSocket = true;
                         }
                     }
+                    // 如果closeSocket不为false并且sk是可写的。
                     if (!closeSocket && sk.isWritable()) {
+                        // 创建或者获取缓存的SocketProcessorBase类对象，然后用catalina-exec线程池去执行任务。
                         if (!processSocket(attachment, SocketEvent.OPEN_WRITE, true)) {
+                            // 出现异常，设置closeSocket为true。
                             closeSocket = true;
                         }
                     }
