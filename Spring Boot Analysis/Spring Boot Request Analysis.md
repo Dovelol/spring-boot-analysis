@@ -411,6 +411,102 @@ protected void processKey(SelectionKey sk, NioSocketWrapper attachment) {
     }
 }
 
+// SocketProcessorBase#run 这个就是exec线程执行的任务。
+@Override
+public final void run() {
+    synchronized (socketWrapper) {
+        // It is possible that processing may be triggered for read and
+        // write at the same time. The sync above makes sure that processing
+        // does not occur in parallel. The test below ensures that if the
+        // first event to be processed results in the socket being closed,
+        // the subsequent events are not processed.
+        // 判断socket是否关闭
+        if (socketWrapper.isClosed()) {
+            // 直接返回
+            return;
+        }
+        // 调用不同Endpoint的doRun方法。
+        doRun();
+    }
+}
+
+@Override
+protected void doRun() {
+    // 从wrapper中获取到NioChannel。
+    NioChannel socket = socketWrapper.getSocket();
+    // 1.获取SocketChannel；2.从SocketChannel中遍历找到对应的selector和Poller中selector一样的SelectionKey。每个Channel向Selector注册时,都将会创建一个selectionKey
+    SelectionKey key = socket.getIOChannel().keyFor(socket.getPoller().getSelector());
+
+    try {
+        // 握手变量？？
+        int handshake = -1;
+
+        try {
+            // 如果key不为空。
+            if (key != null) {
+                // 
+                if (socket.isHandshakeComplete()) {
+                    // No TLS handshaking required. Let the handler
+                    // process this socket / event combination.
+                    handshake = 0;
+                } else if (event == SocketEvent.STOP || event == SocketEvent.DISCONNECT ||
+                           event == SocketEvent.ERROR) {
+                    // Unable to complete the TLS handshake. Treat it as
+                    // if the handshake failed.
+                    handshake = -1;
+                } else {
+                    handshake = socket.handshake(key.isReadable(), key.isWritable());
+                    // The handshake process reads/writes from/to the
+                    // socket. status may therefore be OPEN_WRITE once
+                    // the handshake completes. However, the handshake
+                    // happens when the socket is opened so the status
+                    // must always be OPEN_READ after it completes. It
+                    // is OK to always set this as it is only used if
+                    // the handshake completes.
+                    event = SocketEvent.OPEN_READ;
+                }
+            }
+        } catch (IOException x) {
+            handshake = -1;
+            if (log.isDebugEnabled()) log.debug("Error during SSL handshake",x);
+        } catch (CancelledKeyException ckx) {
+            handshake = -1;
+        }
+        if (handshake == 0) {
+            SocketState state = SocketState.OPEN;
+            // Process the request from this socket
+            if (event == null) {
+                state = getHandler().process(socketWrapper, SocketEvent.OPEN_READ);
+            } else {
+                state = getHandler().process(socketWrapper, event);
+            }
+            if (state == SocketState.CLOSED) {
+                close(socket, key);
+            }
+        } else if (handshake == -1 ) {
+            close(socket, key);
+        } else if (handshake == SelectionKey.OP_READ){
+            socketWrapper.registerReadInterest();
+        } else if (handshake == SelectionKey.OP_WRITE){
+            socketWrapper.registerWriteInterest();
+        }
+    } catch (CancelledKeyException cx) {
+        socket.getPoller().cancelledKey(key);
+    } catch (VirtualMachineError vme) {
+        ExceptionUtils.handleThrowable(vme);
+    } catch (Throwable t) {
+        log.error(sm.getString("endpoint.processing.fail"), t);
+        socket.getPoller().cancelledKey(key);
+    } finally {
+        socketWrapper = null;
+        event = null;
+        //return to cache
+        if (running && !paused) {
+            processorCache.push(this);
+        }
+    }
+}
+}
 
 
 ```
