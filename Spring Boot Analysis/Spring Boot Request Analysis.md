@@ -541,30 +541,40 @@ public SocketState process(SocketWrapperBase<S> wrapper, SocketEvent status) {
     // dispatched. Because of delays in the dispatch process, the
     // timeout may no longer be required. Check here and avoid
     // unnecessary processing.
+    // 如果状态为超市并且processor为空或者processor不是异步的或者processor的checkAsyncTimeoutGeneration为false。
     if (SocketEvent.TIMEOUT == status && (processor == null ||
                                           !processor.isAsync() || !processor.checkAsyncTimeoutGeneration())) {
         // This is effectively a NO-OP
+        // 返回open状态。
         return SocketState.OPEN;
     }
-
+	// processor不为空。
     if (processor != null) {
         // Make sure an async timeout doesn't fire
+        // 从waitingProcessors集合中删除processor。
         getProtocol().removeWaitingProcessor(processor);
     } else if (status == SocketEvent.DISCONNECT || status == SocketEvent.ERROR) {
         // Nothing to do. Endpoint requested a close and there is no
         // longer a processor associated with this socket.
+        // 返回closed状态。
         return SocketState.CLOSED;
     }
-
+	// 设置线程变量true。
     ContainerThreadMarker.set();
 
     try {
+        // 如果processor为空。
         if (processor == null) {
+            // 获取negotiatedProtocol的值。
             String negotiatedProtocol = wrapper.getNegotiatedProtocol();
+            // 如果negotiatedProtocol不为空。
             if (negotiatedProtocol != null) {
+                // 这个地方应该是获取http2.0的协议对象。
                 UpgradeProtocol upgradeProtocol =
                     getProtocol().getNegotiatedProtocol(negotiatedProtocol);
+                // 如果upgradeProtocol不为空。
                 if (upgradeProtocol != null) {
+                    // 从upgradeProtocol中获取processor。
                     processor = upgradeProtocol.getProcessor(
                         wrapper, getProtocol().getAdapter());
                 } else if (negotiatedProtocol.equals("http/1.1")) {
@@ -595,15 +605,21 @@ public SocketState process(SocketWrapperBase<S> wrapper, SocketEvent status) {
                 }
             }
         }
+        // 如果processor为空。
         if (processor == null) {
+            // 从recycledProcessors缓存中获取一个processor对象。
             processor = recycledProcessors.pop();
+            // 输出log。
             if (getLog().isDebugEnabled()) {
                 getLog().debug(sm.getString("abstractConnectionHandler.processorPop",
                                             processor));
             }
         }
+        // 如果processor仍旧为空。
         if (processor == null) {
+            // 创建一个新的processor对象。
             processor = getProtocol().createProcessor();
+            // 
             register(processor);
         }
 
