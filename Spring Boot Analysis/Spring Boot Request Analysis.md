@@ -619,18 +619,20 @@ public SocketState process(SocketWrapperBase<S> wrapper, SocketEvent status) {
         if (processor == null) {
             // 创建一个新的processor对象。
             processor = getProtocol().createProcessor();
-            // 
+            // 设置请求头信息。
             register(processor);
         }
-
+		// ssl相关配置。
         processor.setSslSupport(
             wrapper.getSslSupport(getProtocol().getClientCertProvider()));
 
         // Associate the processor with the connection
+        // socket和processor作为k,v添加到connections集合中。
         connections.put(socket, processor);
-
+		// state为closed。
         SocketState state = SocketState.CLOSED;
         do {
+            // #1-1
             state = processor.process(wrapper, status);
 
             if (state == SocketState.UPGRADING) {
@@ -783,6 +785,70 @@ public SocketState process(SocketWrapperBase<S> wrapper, SocketEvent status) {
     connections.remove(socket);
     release(processor);
     return SocketState.CLOSED;
+}
+
+// #1-1 AbstractProcessorLight#process
+@Override
+public SocketState process(SocketWrapperBase<?> socketWrapper, SocketEvent status)
+    throws IOException {
+	// 设置state为closed。
+    SocketState state = SocketState.CLOSED;
+    // 创建Iterator类型的变量。
+    Iterator<DispatchType> dispatches = null;
+    do {
+        // 如果dispatches不为空
+        if (dispatches != null) {
+            // 获取一个DispatchType对象。
+            DispatchType nextDispatch = dispatches.next();
+            // 
+            state = dispatch(nextDispatch.getSocketStatus());
+        } else if (status == SocketEvent.DISCONNECT) {
+            // Do nothing here, just wait for it to get recycled
+        } else if (isAsync() || isUpgrade() || state == SocketState.ASYNC_END) {
+            state = dispatch(status);
+            if (state == SocketState.OPEN) {
+                // There may be pipe-lined data to read. If the data isn't
+                // processed now, execution will exit this loop and call
+                // release() which will recycle the processor (and input
+                // buffer) deleting any pipe-lined data. To avoid this,
+                // process it now.
+                state = service(socketWrapper);
+            }
+        } else if (status == SocketEvent.OPEN_WRITE) {
+            // Extra write event likely after async, ignore
+            state = SocketState.LONG;
+        } else if (status == SocketEvent.OPEN_READ){
+            // 调用service方法处理请求。包含了解析请求头，数据body，交给
+            state = service(socketWrapper);
+        } else {
+            // Default to closing the socket if the SocketEvent passed in
+            // is not consistent with the current state of the Processor
+            state = SocketState.CLOSED;
+        }
+
+        if (getLog().isDebugEnabled()) {
+            getLog().debug("Socket: [" + socketWrapper +
+                           "], Status in: [" + status +
+                           "], State out: [" + state + "]");
+        }
+
+        if (state != SocketState.CLOSED && isAsync()) {
+            state = asyncPostProcess();
+            if (getLog().isDebugEnabled()) {
+                getLog().debug("Socket: [" + socketWrapper +
+                               "], State after async post processing: [" + state + "]");
+            }
+        }
+
+        if (dispatches == null || !dispatches.hasNext()) {
+            // Only returns non-null iterator if there are
+            // dispatches to process.
+            dispatches = getIteratorAndClearDispatches();
+        }
+    } while (state == SocketState.ASYNC_END ||
+             dispatches != null && state != SocketState.CLOSED);
+
+    return state;
 }
 
 ```
