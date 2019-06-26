@@ -818,7 +818,7 @@ public SocketState process(SocketWrapperBase<?> socketWrapper, SocketEvent statu
             // Extra write event likely after async, ignore
             state = SocketState.LONG;
         } else if (status == SocketEvent.OPEN_READ){
-            // 调用service方法处理请求。包含了解析请求头，数据body，交给
+            // 调用service方法处理请求。包含了解析请求头，数据body，并且最后交给DispatcherServlet去处理请求。
             state = service(socketWrapper);
         } else {
             // Default to closing the socket if the SocketEvent passed in
