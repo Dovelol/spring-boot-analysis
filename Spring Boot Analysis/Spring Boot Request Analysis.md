@@ -851,6 +851,138 @@ public SocketState process(SocketWrapperBase<?> socketWrapper, SocketEvent statu
     return state;
 }
 
+
+// FrameworkServlet#service
+@Override
+protected void service(HttpServletRequest request, HttpServletResponse response)
+    throws ServletException, IOException {
+	// 获取请求对应方法的httpMethod。
+    HttpMethod httpMethod = HttpMethod.resolve(request.getMethod());
+    // 如果method是patch或者是null。
+    if (httpMethod == HttpMethod.PATCH || httpMethod == null) {
+        processRequest(request, response);
+    }
+    else {
+        // #1
+        super.service(request, response);
+    }
+}
+
+// #1 HttpServlet#service
+protected void service(HttpServletRequest req, HttpServletResponse resp)
+    throws ServletException, IOException {
+	// 获取请求的方法类型。
+    String method = req.getMethod();
+	// 如果是get方法。
+    if (method.equals(METHOD_GET)) {
+        // 获取最后修改的时间 lastModified是服务器传给客户端的时间。
+        long lastModified = getLastModified(req);
+        if (lastModified == -1) {
+            // servlet doesn't support if-modified-since, no reason
+            // to go through further expensive logic
+            // #1-1
+            doGet(req, resp);
+        } else {
+            // 获取最后修改的时间 lastModified是客户端传给服务器的时间。
+            long ifModifiedSince;
+            try {
+                // 从请求头中获取最后修改的时间。
+                ifModifiedSince = req.getDateHeader(HEADER_IFMODSINCE);
+            } catch (IllegalArgumentException iae) {
+                // Invalid date header - proceed as if none was set
+                // 出异常就把ifModifiedSince改为-1。
+                ifModifiedSince = -1;
+            }
+            // 如果ifModifiedSince小于lastModified。
+            if (ifModifiedSince < (lastModified / 1000 * 1000)) {
+                // If the servlet mod time is later, call doGet()
+                // Round down to the nearest second for a proper compare
+                // A ifModifiedSince of -1 will always be less
+                maybeSetLastModified(resp, lastModified);
+                doGet(req, resp);
+            } else {
+                resp.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
+            }
+        }
+
+    } else if (method.equals(METHOD_HEAD)) {
+        long lastModified = getLastModified(req);
+        maybeSetLastModified(resp, lastModified);
+        doHead(req, resp);
+
+    } else if (method.equals(METHOD_POST)) {
+        doPost(req, resp);
+
+    } else if (method.equals(METHOD_PUT)) {
+        doPut(req, resp);
+
+    } else if (method.equals(METHOD_DELETE)) {
+        doDelete(req, resp);
+
+    } else if (method.equals(METHOD_OPTIONS)) {
+        doOptions(req,resp);
+
+    } else if (method.equals(METHOD_TRACE)) {
+        doTrace(req,resp);
+
+    } else {
+        //
+        // Note that this means NO servlet supports whatever
+        // method was requested, anywhere on this server.
+        //
+
+        String errMsg = lStrings.getString("http.method_not_implemented");
+        Object[] errArgs = new Object[1];
+        errArgs[0] = method;
+        errMsg = MessageFormat.format(errMsg, errArgs);
+
+        resp.sendError(HttpServletResponse.SC_NOT_IMPLEMENTED, errMsg);
+    }
+}
+
+// #1-1 FrameworkServlet#processRequest
+protected final void processRequest(HttpServletRequest request, HttpServletResponse response)
+    throws ServletException, IOException {
+	// 获取系统当前时间。
+    long startTime = System.currentTimeMillis();
+    // 创建Throwable类型的变量。
+    Throwable failureCause = null;
+	// 获取本地上下文变量。
+    LocaleContext previousLocaleContext = LocaleContextHolder.getLocaleContext();
+    // 构建本地上下文变量。
+    LocaleContext localeContext = buildLocaleContext(request);
+
+    RequestAttributes previousAttributes = RequestContextHolder.getRequestAttributes();
+    ServletRequestAttributes requestAttributes = buildRequestAttributes(request, response, previousAttributes);
+
+    WebAsyncManager asyncManager = WebAsyncUtils.getAsyncManager(request);
+    asyncManager.registerCallableInterceptor(FrameworkServlet.class.getName(), new RequestBindingInterceptor());
+
+    initContextHolders(request, localeContext, requestAttributes);
+
+    try {
+        doService(request, response);
+    }
+    catch (ServletException | IOException ex) {
+        failureCause = ex;
+        throw ex;
+    }
+    catch (Throwable ex) {
+        failureCause = ex;
+        throw new NestedServletException("Request processing failed", ex);
+    }
+
+    finally {
+        resetContextHolders(request, previousLocaleContext, previousAttributes);
+        if (requestAttributes != null) {
+            requestAttributes.requestCompleted();
+        }
+        logResult(request, response, failureCause, asyncManager);
+        publishRequestHandledEvent(request, response, startTime, failureCause);
+    }
+}
+
+
 ```
 
 
