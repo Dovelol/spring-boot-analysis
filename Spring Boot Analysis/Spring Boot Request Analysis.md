@@ -951,16 +951,19 @@ protected final void processRequest(HttpServletRequest request, HttpServletRespo
     LocaleContext previousLocaleContext = LocaleContextHolder.getLocaleContext();
     // 构建本地上下文变量。
     LocaleContext localeContext = buildLocaleContext(request);
-
+	// 获取RequestAttributes类型的对象。
     RequestAttributes previousAttributes = RequestContextHolder.getRequestAttributes();
+    // 创建ServletRequestAttributes类型的对象。
     ServletRequestAttributes requestAttributes = buildRequestAttributes(request, response, previousAttributes);
-
+	// 获取异步的WebAsyncManager对象。
     WebAsyncManager asyncManager = WebAsyncUtils.getAsyncManager(request);
+    // 注册一个拦截器。
     asyncManager.registerCallableInterceptor(FrameworkServlet.class.getName(), new RequestBindingInterceptor());
-
+	// 将localeContext和requestAttributes添加到对应的ContextHolder中。
     initContextHolders(request, localeContext, requestAttributes);
 
     try {
+        // #1-1-1 
         doService(request, response);
     }
     catch (ServletException | IOException ex) {
@@ -982,6 +985,62 @@ protected final void processRequest(HttpServletRequest request, HttpServletRespo
     }
 }
 
+// #1-1-1 DispatcherServlet#doService
+protected void doService(HttpServletRequest request, HttpServletResponse response) throws Exception {
+    // 输出日志。
+    logRequest(request);
+
+    // Keep a snapshot of the request attributes in case of an include,
+    // to be able to restore the original attributes after the include.
+    // 创建attributesSnapshot集合变量。
+    Map<String, Object> attributesSnapshot = null;
+    // request是否包含key为javax.servlet.include.request_uri的属性。
+    if (WebUtils.isIncludeRequest(request)) {
+        // 创建新的map集合。
+        attributesSnapshot = new HashMap<>();
+        // 获取request中所有的属性名。
+        Enumeration<?> attrNames = request.getAttributeNames();
+        while (attrNames.hasMoreElements()) {
+            // 遍历获取每个属性名。
+            String attrName = (String) attrNames.nextElement();
+            if (this.cleanupAfterInclude || attrName.startsWith(DEFAULT_STRATEGIES_PREFIX)) {
+                // 将属性添加到attributesSnapshot集合中。
+                attributesSnapshot.put(attrName, request.getAttribute(attrName));
+            }
+        }
+    }
+
+    // Make framework objects available to handlers and view objects.
+    // 设置属性org.springframework.web.servlet.DispatcherServlet.CONTEXT=ACSWAC
+    request.setAttribute(WEB_APPLICATION_CONTEXT_ATTRIBUTE, getWebApplicationContext());
+    // 设置属性org.springframework.web.servlet.DispatcherServlet.LOCALE_RESOLVER=AcceptHeaderLocaleResolver
+    request.setAttribute(LOCALE_RESOLVER_ATTRIBUTE, this.localeResolver);
+    // 设置属性org.springframework.web.servlet.DispatcherServlet.THEME_RESOLVER=FixedThemeResolver
+    request.setAttribute(THEME_RESOLVER_ATTRIBUTE, this.themeResolver);
+    // 设置属性org.springframework.web.servlet.DispatcherServlet.THEME_SOURCE=ACSWAC
+    request.setAttribute(THEME_SOURCE_ATTRIBUTE, getThemeSource());
+
+    if (this.flashMapManager != null) {
+        FlashMap inputFlashMap = this.flashMapManager.retrieveAndUpdate(request, response);
+        if (inputFlashMap != null) {
+            request.setAttribute(INPUT_FLASH_MAP_ATTRIBUTE, Collections.unmodifiableMap(inputFlashMap));
+        }
+        request.setAttribute(OUTPUT_FLASH_MAP_ATTRIBUTE, new FlashMap());
+        request.setAttribute(FLASH_MAP_MANAGER_ATTRIBUTE, this.flashMapManager);
+    }
+
+    try {
+        doDispatch(request, response);
+    }
+    finally {
+        if (!WebAsyncUtils.getAsyncManager(request).isConcurrentHandlingStarted()) {
+            // Restore the original attribute snapshot, in case of an include.
+            if (attributesSnapshot != null) {
+                restoreAttributesAfterInclude(request, attributesSnapshot);
+            }
+        }
+    }
+}
 
 ```
 
