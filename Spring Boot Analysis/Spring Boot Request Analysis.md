@@ -1019,17 +1019,22 @@ protected void doService(HttpServletRequest request, HttpServletResponse respons
     request.setAttribute(THEME_RESOLVER_ATTRIBUTE, this.themeResolver);
     // 设置属性org.springframework.web.servlet.DispatcherServlet.THEME_SOURCE=ACSWAC
     request.setAttribute(THEME_SOURCE_ATTRIBUTE, getThemeSource());
-
+	// 如果flashMapManager不为null。
     if (this.flashMapManager != null) {
+        // 找出符合要求的FlashMap对象。
         FlashMap inputFlashMap = this.flashMapManager.retrieveAndUpdate(request, response);
         if (inputFlashMap != null) {
+            // 设置属性org.springframework.web.servlet.DispatcherServlet.INPUT_FLASH_MAP=inputFlashMap
             request.setAttribute(INPUT_FLASH_MAP_ATTRIBUTE, Collections.unmodifiableMap(inputFlashMap));
         }
+        // 设置属性org.springframework.web.servlet.DispatcherServlet.OUTPUT_FLASH_MAP=FlashMap
         request.setAttribute(OUTPUT_FLASH_MAP_ATTRIBUTE, new FlashMap());
+        // 设置属性org.springframework.web.servlet.DispatcherServlet.FLASH_MAP_MANAGER=flashMapManager
         request.setAttribute(FLASH_MAP_MANAGER_ATTRIBUTE, this.flashMapManager);
     }
 
     try {
+        // #1-1-1-1
         doDispatch(request, response);
     }
     finally {
@@ -1037,6 +1042,100 @@ protected void doService(HttpServletRequest request, HttpServletResponse respons
             // Restore the original attribute snapshot, in case of an include.
             if (attributesSnapshot != null) {
                 restoreAttributesAfterInclude(request, attributesSnapshot);
+            }
+        }
+    }
+}
+
+// #1-1-1-1 DispatcherServlet#doDispatch
+protected void doDispatch(HttpServletRequest request, HttpServletResponse response) throws Exception {
+    // 创建HttpServletRequest类型变量。
+    HttpServletRequest processedRequest = request;
+    // 创建HandlerExecutionChain类型变量。
+    HandlerExecutionChain mappedHandler = null;
+    // 创建multipartRequestParsed=false。
+    boolean multipartRequestParsed = false;
+	// 从request的属性中获取WEB_ASYNC_MANAGER的值。
+    WebAsyncManager asyncManager = WebAsyncUtils.getAsyncManager(request);
+
+    try {
+        // 创建ModelAndView类型对象。
+        ModelAndView mv = null;
+        // 创建Exception类型对象。
+        Exception dispatchException = null;
+
+        try {
+            // 检查request的contentType是否是multipart类型的，如果是，需要处理，如果不是，processedRequest=request。
+            processedRequest = checkMultipart(request);
+            // 判断是否需要做multipart类型的解析。
+            multipartRequestParsed = (processedRequest != request);
+
+            // Determine handler for the current request.
+            // 获取请求对应的HandlerExecutionChain。
+            mappedHandler = getHandler(processedRequest);
+            // 如果对应的mappedHandler为空。
+            if (mappedHandler == null) {
+                // 那么返回404。
+                noHandlerFound(processedRequest, response);
+                return;
+            }
+
+            // Determine handler adapter for the current request.
+            // 获取handlerAdapter对象。
+            HandlerAdapter ha = getHandlerAdapter(mappedHandler.getHandler());
+
+            // Process last-modified header, if supported by the handler.
+            String method = request.getMethod();
+            boolean isGet = "GET".equals(method);
+            if (isGet || "HEAD".equals(method)) {
+                long lastModified = ha.getLastModified(request, mappedHandler.getHandler());
+                if (new ServletWebRequest(request, response).checkNotModified(lastModified) && isGet) {
+                    return;
+                }
+            }
+
+            if (!mappedHandler.applyPreHandle(processedRequest, response)) {
+                return;
+            }
+
+            // Actually invoke the handler.
+            mv = ha.handle(processedRequest, response, mappedHandler.getHandler());
+
+            if (asyncManager.isConcurrentHandlingStarted()) {
+                return;
+            }
+
+            applyDefaultViewName(processedRequest, mv);
+            mappedHandler.applyPostHandle(processedRequest, response, mv);
+        }
+        catch (Exception ex) {
+            dispatchException = ex;
+        }
+        catch (Throwable err) {
+            // As of 4.3, we're processing Errors thrown from handler methods as well,
+            // making them available for @ExceptionHandler methods and other scenarios.
+            dispatchException = new NestedServletException("Handler dispatch failed", err);
+        }
+        processDispatchResult(processedRequest, response, mappedHandler, mv, dispatchException);
+    }
+    catch (Exception ex) {
+        triggerAfterCompletion(processedRequest, response, mappedHandler, ex);
+    }
+    catch (Throwable err) {
+        triggerAfterCompletion(processedRequest, response, mappedHandler,
+                               new NestedServletException("Handler processing failed", err));
+    }
+    finally {
+        if (asyncManager.isConcurrentHandlingStarted()) {
+            // Instead of postHandle and afterCompletion
+            if (mappedHandler != null) {
+                mappedHandler.applyAfterConcurrentHandlingStarted(processedRequest, response);
+            }
+        }
+        else {
+            // Clean up any resources used by a multipart request.
+            if (multipartRequestParsed) {
+                cleanupMultipart(processedRequest);
             }
         }
     }
