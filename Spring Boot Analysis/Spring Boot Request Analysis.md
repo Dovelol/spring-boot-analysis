@@ -1085,20 +1085,26 @@ protected void doDispatch(HttpServletRequest request, HttpServletResponse respon
             HandlerAdapter ha = getHandlerAdapter(mappedHandler.getHandler());
 
             // Process last-modified header, if supported by the handler.
+            // 获取request的method。
             String method = request.getMethod();
+            // 判断request是否是GET请求。
             boolean isGet = "GET".equals(method);
+            // 如果是GET方法或者HEAD方法。
             if (isGet || "HEAD".equals(method)) {
+                // 返回-1。
                 long lastModified = ha.getLastModified(request, mappedHandler.getHandler());
+                // 是否修改过，不知道是什么操作。
                 if (new ServletWebRequest(request, response).checkNotModified(lastModified) && isGet) {
                     return;
                 }
             }
-
+			// 执行拦截器的preHandle方法，如果不满足条件就返回。
             if (!mappedHandler.applyPreHandle(processedRequest, response)) {
                 return;
             }
 
             // Actually invoke the handler.
+            // 反射执行controller的方法。
             mv = ha.handle(processedRequest, response, mappedHandler.getHandler());
 
             if (asyncManager.isConcurrentHandlingStarted()) {
