@@ -1106,22 +1106,26 @@ protected void doDispatch(HttpServletRequest request, HttpServletResponse respon
             // Actually invoke the handler.
             // 反射执行controller的方法。
             mv = ha.handle(processedRequest, response, mappedHandler.getHandler());
-
+			// 是否异步处理。
             if (asyncManager.isConcurrentHandlingStarted()) {
                 return;
             }
-
+			// 设置默认的viewName。
             applyDefaultViewName(processedRequest, mv);
+            // 执行所有拦截器的postHandle方法。
             mappedHandler.applyPostHandle(processedRequest, response, mv);
         }
         catch (Exception ex) {
+            // 赋值dispatchException。
             dispatchException = ex;
         }
         catch (Throwable err) {
             // As of 4.3, we're processing Errors thrown from handler methods as well,
             // making them available for @ExceptionHandler methods and other scenarios.
+            // 创建新的Exception类型对象。
             dispatchException = new NestedServletException("Handler dispatch failed", err);
         }
+        // 
         processDispatchResult(processedRequest, response, mappedHandler, mv, dispatchException);
     }
     catch (Exception ex) {
