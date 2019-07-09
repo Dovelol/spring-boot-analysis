@@ -1125,7 +1125,7 @@ protected void doDispatch(HttpServletRequest request, HttpServletResponse respon
             // 创建新的Exception类型对象。
             dispatchException = new NestedServletException("Handler dispatch failed", err);
         }
-        // 
+        // 处理分发结果，调用拦截器的afterCompletion方法。
         processDispatchResult(processedRequest, response, mappedHandler, mv, dispatchException);
     }
     catch (Exception ex) {
