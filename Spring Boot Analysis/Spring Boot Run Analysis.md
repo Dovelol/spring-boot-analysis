@@ -4,19 +4,19 @@
 
 ```java
 public static void main(String[] args) {
-    //启动spring boot。
+    // 启动spring boot。
     SpringApplication.run(DovelolApplication.class, args);
 }
 
 public static ConfigurableApplicationContext run(Class<?> primarySource,
                                                  String... args) {
-    //执行SpringApplication类中的静态run方法。
+    // 执行SpringApplication类中的静态run方法。
     return run(new Class<?>[] { primarySource }, args);
 }
 
 public static ConfigurableApplicationContext run(Class<?>[] primarySources,
                                                  String[] args) {
-    //执行SpringApplication类中的实例run方法。
+    // 创建SpringApplication对象，并执行run方法。
     return new SpringApplication(primarySources).run(args);
 }
 ```
@@ -27,25 +27,24 @@ public static ConfigurableApplicationContext run(Class<?>[] primarySources,
 
 ```java
 public SpringApplication(Class<?>... primarySources) {
-    //调用构造函数。
+    // 调用构造函数。
     this(null, primarySources);
 }
 
 public SpringApplication(ResourceLoader resourceLoader, Class<?>... primarySources)  {
-    //由上面this调用传入的是null。
+    // 由上面this调用传入的是null。
     this.resourceLoader = resourceLoader;
     Assert.notNull(primarySources, "PrimarySources must not be null");
-    //Set<Class<?>> primarySources中只有一条DovelolApplication类对象数据。
+    // Set<Class<?>> primarySources中只有一条DovelolApplication类对象数据。
     this.primarySources = new LinkedHashSet<>(Arrays.asList(primarySources));
-    //推断web应用类型(REACTIVE|NONE|SERVLET) 一般我们的应用都是SERVLET类型。
+    // 推断web应用类型(REACTIVE|NONE|SERVLET) 一般我们的应用都是SERVLET类型。
     this.webApplicationType = WebApplicationType.deduceFromClasspath();  
-    //创建META-INF/spring.factories中类型为ApplicationContextInitializer的所有实例，添加到initializers集合，此处getSpringFactoriesInstances为核心方法，如果想自己添加需要2步，1：创建自定义类并且实现ApplicationContextInitializer接口；2：创建spring.factories文件并且配置好刚刚自己定义的Initializer类，可以设置Order值来调整加载顺序。
+    // 创建META-INF/spring.factories中类型为ApplicationContextInitializer的所有实例，添加到initializers集合，此处getSpringFactoriesInstances为核心方法，如果想自己添加需要2步，1：创建自定义类并且实现ApplicationContextInitializer接口；2：创建spring.factories文件并且配置好刚刚自己定义的Initializer类，可以设置Order值来调整加载顺序。
     setInitializers((Collection) getSpringFactoriesInstances(
             ApplicationContextInitializer.class));
-    //创建META-INF/spring.factories中类型为ApplicationListener的所有实例,添加到listeners集合。
+    // 创建META-INF/spring.factories中类型为ApplicationListener的所有实例,添加到listeners集合。
     setListeners((Collection) getSpringFactoriesInstances(ApplicationListener.class));
-    //根据new RuntimeException().getStackTrace()显示的调用堆栈链路，循环找出main方法所在类的类对象
-    //本例中是DovelolApplication的Class对象。
+    // 根据new RuntimeException().getStackTrace()显示的调用堆栈链路，循环找出main方法所在类的类对象，本例中是DovelolApplication的Class对象。
     this.mainApplicationClass = deduceMainApplicationClass();
 }
 ```
@@ -62,41 +61,41 @@ public SpringApplication(ResourceLoader resourceLoader, Class<?>... primarySourc
  * @return a running {@link ApplicationContext}
  */
 public ConfigurableApplicationContext run(String... args) {
-    //创建代码运行时间统计的实例
+    // 创建代码运行时间统计的实例
     StopWatch stopWatch = new StopWatch();
-    //开始统计，设置开始时间为当前系统毫秒值
+    // 开始统计，设置开始时间为当前系统毫秒值
     stopWatch.start();
-    //创建context变量
+    // 创建context变量
     ConfigurableApplicationContext context = null;
-    //创建异常集合
+    // 创建异常集合
     Collection<SpringBootExceptionReporter> exceptionReporters = new ArrayList<>();
-    //设置headless属性为true，
+    // 设置headless属性为true。
     configureHeadlessProperty();
-    //创建META-INF/spring.factories中类型为SpringApplicationRunListener的所有实例（其实只有一个EventPublishingRunListener），此实例将来可以用作驱动所有listener监听的事件，如下所示。
+    // 创建META-INF/spring.factories中类型为SpringApplicationRunListener的所有实例（其实只有一个EventPublishingRunListener），在EventPublishingRunListener构造器中先创建SimpleApplicationEventMulticaster对象，然后从SpringApplication对象中获取到的所有的ApplicationListener（listener）添加到SimpleApplicationEventMulticaster的ListenerRetriever（defaultRetriever）对象中，后续所有listener的过滤都是从这个ListenerRetriever中获取的；然后创建SpringApplicationRunListeners对象，把刚刚SpringApplicationRunListener的所有实例添加到listeners属性中。简单点说结构就是SpringApplicationRunListeners->EventPublishingRunListener->SimpleApplicationEventMulticaster，最后调用的全是都是SimpleApplicationEventMulticaster中的方法。
     SpringApplicationRunListeners listeners = getRunListeners(args);
-    //第一处listener的调用，执行listeners中唯一的一个EventPublishingRunListener实例的starting方法，然后调用成员变量SimpleApplicationEventMulticaster（initialMulticaster）的multicastEvent方法，其实就是调用类型为ApplicationListener监听器的onApplicationEvent方法。这里有个疑问是到底调用了具体哪些listener（10个中筛选了4个）？，那么是怎么筛选出来的？？？？？
+    // 第一处listener的调用，执行listeners中唯一的一个EventPublishingRunListener实例的starting方法，然后调用成员变量SimpleApplicationEventMulticaster（initialMulticaster）的multicastEvent方法，其实就是调用类型为ApplicationListener监听器的onApplicationEvent方法。这里有个疑问是到底调用了具体哪些listener（10个中筛选了4个）？，那么是怎么筛选出来的？？？？？回答上面的问题，是通过筛选对应的ApplicationEvent事件来找出要求的ApplicationListener，然后依次调用onApplicationEvent方法。此处有2个接口，分别是GenericApplicationListener（@since 4.2）和SmartApplicationListener（@since 3.0），这两个接口的区别就是supportsEventType方法的入参类型不一样，新版本后由GenericApplicationListener替代。
     listeners.starting();
     try {
-        //创建ApplicationArguments实例
+        // 创建ApplicationArguments实例
         ApplicationArguments applicationArguments = new DefaultApplicationArguments(
                 args);
-        //#1 创建StandardServletEnvironment实例，并且加载配置资源
+        // #1 创建StandardServletEnvironment实例，并且加载配置资源
         ConfigurableEnvironment environment = prepareEnvironment(listeners,
                 applicationArguments);
-        //设置spring.beaninfo.ignore的值，先从系统参数中获取，如果没有，再从spring配置中获取。具体作用不清楚。
+        // 设置spring.beaninfo.ignore的值，先从系统参数中获取，如果没有，再从spring配置中获取。具体作用不清楚。
         configureIgnoreBeanInfo(environment);
-        //初始化banner标语，也就是spring加载的图画，可以创建banner.txt文件来实现自定义图案。
+        // 初始化banner标语，也就是spring加载的图画，可以创建banner.txt文件来实现自定义图案。
         Banner printedBanner = printBanner(environment);
-        //#2 根据webApplicationType类型创建对应实例，如果是Servlet,那么实例为AnnotationConfigServletWebServerApplicationContext,并且初始化各种父类的实例，如：GenericApplicationContext中this.beanFactory = new DefaultListableBeanFactory()；关键类RootBeanDefinition也是在这个过程中创建的，并且会注册一下内置的processor。
+        // #2 根据webApplicationType类型创建对应实例，如果是Servlet,那么实例为AnnotationConfigServletWebServerApplicationContext,并且初始化各种父类的实例，如：GenericApplicationContext中this.beanFactory = new DefaultListableBeanFactory()；关键类RootBeanDefinition也是在这个过程中创建的，并且会注册一下内置的processor。
         context = createApplicationContext();
-        //创建FailureAnalyzers类型所有的实例，并且BeanFactoryAware实现类设置BeanFactory，EnvironmentAware实现类设置Environment。
+        // 创建FailureAnalyzers类型所有的实例，并且BeanFactoryAware实现类设置BeanFactory，EnvironmentAware实现类设置Environment。
         exceptionReporters = getSpringFactoriesInstances(
                 SpringBootExceptionReporter.class,
                 new Class[] { ConfigurableApplicationContext.class }, context);
-        //#3 上下文准备工作，主要是设置环境变量，执行所有Initializer的方法，还有就是注册一些内置默认的bean。
+        // #3 上下文准备工作，主要是设置环境变量，执行所有Initializer的方法，还有就是注册一些内置默认的bean。
         prepareContext(context, environment, listeners, applicationArguments,
                 printedBanner);
-        //#4 初始化spring context。
+        // #4 初始化spring context。
         refreshContext(context);
         // 初始化完成后的操作。
         afterRefresh(context, applicationArguments);
@@ -135,11 +134,11 @@ private ConfigurableEnvironment prepareEnvironment(
     ConfigurableEnvironment environment = getOrCreateEnvironment();
     // 设置环境配置
     configureEnvironment(environment, applicationArguments.getSourceArgs());
-    //第二处listener的调用，调用EventPublishingRunListener中的environmentPrepared方法，只是订阅的event事件是ApplicationEnvironmentPreparedEvent。
+    // 第二处listener的调用，调用EventPublishingRunListener中的environmentPrepared方法，只是订阅的event事件是ApplicationEnvironmentPreparedEvent。
     listeners.environmentPrepared(environment);
-    //把StandardServletEnvironment和SpringApplication绑定到一起。
+    // 把StandardServletEnvironment和SpringApplication绑定到一起。
     bindToSpringApplication(environment);
-    //转换给定的environment为指定类型。
+    // 转换给定的environment为指定类型。
     if (!this.isCustomEnvironment) {
         environment = new EnvironmentConverter(getClassLoader())
             .convertEnvironmentIfNecessary(environment, deduceEnvironmentClass());
