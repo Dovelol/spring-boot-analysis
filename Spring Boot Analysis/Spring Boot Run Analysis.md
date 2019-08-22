@@ -126,11 +126,11 @@ public ConfigurableApplicationContext run(String... args) {
     return context;
 }
 
-//#1
+// #1
 private ConfigurableEnvironment prepareEnvironment(
     SpringApplicationRunListeners listeners,
     ApplicationArguments applicationArguments) {
-    // Create and configure the environment 类型为：StandardServletEnvironment
+    // Create and configure the environment 创建StandardServletEnvironment对象，并且将系统配置（systemProperties）和系统环境变量（systemEnvironment）添加到propertySources属性中。
     ConfigurableEnvironment environment = getOrCreateEnvironment();
     // 设置环境配置
     configureEnvironment(environment, applicationArguments.getSourceArgs());
