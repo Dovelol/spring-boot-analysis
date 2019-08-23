@@ -132,9 +132,9 @@ private ConfigurableEnvironment prepareEnvironment(
     ApplicationArguments applicationArguments) {
     // Create and configure the environment 创建StandardServletEnvironment对象，并且将系统配置（systemProperties）和系统环境变量（systemEnvironment）添加到propertySources属性中。
     ConfigurableEnvironment environment = getOrCreateEnvironment();
-    // 设置环境配置
+    // 设置环境配置包括了从args中获取的参数还有additionalProfiles种的配置。
     configureEnvironment(environment, applicationArguments.getSourceArgs());
-    // 第二处listener的调用，调用EventPublishingRunListener中的environmentPrepared方法，只是订阅的event事件是ApplicationEnvironmentPreparedEvent。
+    // 第二处listener的调用，只针对订阅ApplicationEnvironmentPreparedEvent类型的event事件，依次调用其onApplicationEvent方法。
     listeners.environmentPrepared(environment);
     // 把StandardServletEnvironment和SpringApplication绑定到一起。
     bindToSpringApplication(environment);
