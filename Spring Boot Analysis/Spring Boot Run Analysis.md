@@ -136,7 +136,7 @@ private ConfigurableEnvironment prepareEnvironment(
     configureEnvironment(environment, applicationArguments.getSourceArgs());
     // 第二处listener的调用，只针对订阅ApplicationEnvironmentPreparedEvent类型的event事件，依次调用其onApplicationEvent方法。
     listeners.environmentPrepared(environment);
-    // 把StandardServletEnvironment和SpringApplication绑定到一起。
+    // 把StandardServletEnvironment和SpringApplication绑定到一起。（具体操作没有看懂）
     bindToSpringApplication(environment);
     // 转换给定的environment为指定类型。
     if (!this.isCustomEnvironment) {
