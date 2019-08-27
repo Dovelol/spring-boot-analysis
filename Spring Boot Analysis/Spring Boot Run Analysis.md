@@ -143,7 +143,7 @@ private ConfigurableEnvironment prepareEnvironment(
         environment = new EnvironmentConverter(getClassLoader())
             .convertEnvironmentIfNecessary(environment, deduceEnvironmentClass());
     }
-    //添加一个name为configurationProperties的配置。
+    // 添加一个name为configurationProperties的配置。
     ConfigurationPropertySources.attach(environment);
     return environment;
 }
@@ -153,10 +153,10 @@ protected ConfigurableApplicationContext createApplicationContext() {
 		Class<?> contextClass = this.applicationContextClass;
     if (contextClass == null) {
         try {
-            //类型为SERVLET
+            // 类型为SERVLET
             switch (this.webApplicationType) {
                 case SERVLET:
-                    //类型是org.springframework.boot.web.servlet.context.AnnotationConfigServletWebServerApplicationContext
+                    // 类型是org.springframework.boot.web.servlet.context.AnnotationConfigServletWebServerApplicationContext
                     contextClass = Class.forName(DEFAULT_SERVLET_WEB_CONTEXT_CLASS);
                     break;
                 case REACTIVE:
@@ -173,37 +173,37 @@ protected ConfigurableApplicationContext createApplicationContext() {
                 ex);
         }
     }
-    //#2-1 关键方法，反射创建AnnotationConfigServletWebServerApplicationContext实例，以下用简称
+    // #2-1 关键方法，反射创建AnnotationConfigServletWebServerApplicationContext实例，以下用简称。
     return (ConfigurableApplicationContext) BeanUtils.instantiateClass(contextClass);
 }
 
-//#2-1 
+// #2-1 
 public AnnotationConfigServletWebServerApplicationContext() {
-    //#2-1-1 构造函数实例化，创建DefaultListableBeanFactory对象，创建StandardServletEnvironment对象，注册内置bean的rdb到beanFactory中。
+    // #2-1-1 构造函数实例化，创建DefaultListableBeanFactory对象，创建StandardServletEnvironment对象，注册内置bean的rdb到beanFactory中。
     this.reader = new AnnotatedBeanDefinitionReader(this);
-    //#2-1-2 创建ClassPathBeanDefinitionScanner扫描类，可以扫描所有的bean并且注册为rdb。
+    // #2-1-2 创建ClassPathBeanDefinitionScanner扫描类，可以扫描所有的bean并且注册为rdb。
     this.scanner = new ClassPathBeanDefinitionScanner(this);
 }
 
-//父类实例化
+// 父类实例化
 public ServletWebServerApplicationContext() {
 }
 
-//父类实例化
+// 父类实例化
 public GenericWebApplicationContext() {
-    //调用父类构造函数。
+    // 调用父类构造函数。
     super();
 }
 
-//父类实例化
+// 父类实例化
 public GenericApplicationContext() {
-    //创建DefaultListableBeanFactory对象，并且赋值给ACSWSAC.beanFactory变量。
+    // 创建DefaultListableBeanFactory对象，并且赋值给ACSWSAC.beanFactory变量。
     this.beanFactory = new DefaultListableBeanFactory();
 }
 
-//#2-1-1 
+// #2-1-1 
 public AnnotatedBeanDefinitionReader(BeanDefinitionRegistry registry) {
-    //getOrCreateEnvironment(registry)返回StandardServletEnvironment对象,调用其它构造函数。
+    // getOrCreateEnvironment(registry)返回StandardServletEnvironment对象,调用其它构造函数。
     this(registry, getOrCreateEnvironment(registry));
 }
 
@@ -211,64 +211,64 @@ public AnnotatedBeanDefinitionReader(BeanDefinitionRegistry registry) {
 public AnnotatedBeanDefinitionReader(BeanDefinitionRegistry registry, Environment environment) {
     Assert.notNull(registry, "BeanDefinitionRegistry must not be null");
     Assert.notNull(environment, "Environment must not be null");
-    //赋值ACSWSAC
+    // 赋值ACSWSAC
     this.registry = registry;
-    //实例化一个ConditionEvaluator以及它的内部类ConditionContextImpl，作用目前不详。
+    // 实例化一个ConditionEvaluator以及它的内部类ConditionContextImpl，作用目前不详。
     this.conditionEvaluator = new ConditionEvaluator(registry, environment, null);
-    //#2-1-1-1 关键流程，总结下就是注册内置的各种Bean的BeanDefinition，添加到beanFactory中。
+    // #2-1-1-1 关键流程，总结下就是注册内置的各种Bean的BeanDefinition，添加到beanFactory中。
     AnnotationConfigUtils.registerAnnotationConfigProcessors(this.registry);
 }
 
-//#2-1-1-1 
+// #2-1-1-1 
 public static void registerAnnotationConfigProcessors(BeanDefinitionRegistry registry) {
-    //同上
+    // 同上
     registerAnnotationConfigProcessors(registry, null);
 }
 
-//#2-1-1-1
+// #2-1-1-1
 public static Set<BeanDefinitionHolder> registerAnnotationConfigProcessors(
     BeanDefinitionRegistry registry, @Nullable Object source) {
-    //获取DefaultListableBeanFactory对象。
+    // 获取DefaultListableBeanFactory对象。
     DefaultListableBeanFactory beanFactory = unwrapDefaultListableBeanFactory(registry);
-    //判断DefaultListableBeanFactory不为null。
+    // 判断DefaultListableBeanFactory不为null。
     if (beanFactory != null) {
         if (!(beanFactory.getDependencyComparator() instanceof AnnotationAwareOrderComparator)) {
-            //设置比较器，用于bean的排序。
+            // 设置比较器，用于bean的排序。
             beanFactory.setDependencyComparator(AnnotationAwareOrderComparator.INSTANCE);
         }
         if (!(beanFactory.getAutowireCandidateResolver() instanceof ContextAnnotationAutowireCandidateResolver)) {
-            //设置自动装配的处理器,用来处理延迟加载（@Lazy）的bean。如果一个bean上有@Lazy注解，个人理解就是在实例化的时候返回一个代理类并没有真正去实例化。
+            // 设置自动装配的处理器,用来处理延迟加载（@Lazy）的bean。如果一个bean上有@Lazy注解，个人理解就是在实例化的时候返回一个代理类并没有真正去实例化。
             beanFactory.setAutowireCandidateResolver(new ContextAnnotationAutowireCandidateResolver());
         }
     }
-	//创建一个类型为BeanDefinitionHolder的set集合。bdh是拥有名称和别名的BeanDefinition的持有者。可以注册为内部bean的占位符。
+	// 创建一个类型为BeanDefinitionHolder的set集合。bdh是拥有名称和别名的BeanDefinition的持有者。可以注册为内部bean的占位符。
     Set<BeanDefinitionHolder> beanDefs = new LinkedHashSet<>(8);
 
     if (!registry.containsBeanDefinition(CONFIGURATION_ANNOTATION_PROCESSOR_BEAN_NAME)) {
-        //创建一个ConfigurationClassPostProcessor类型的rbd。
+        // 创建一个ConfigurationClassPostProcessor类型的rbd。
         RootBeanDefinition def = new RootBeanDefinition(ConfigurationClassPostProcessor.class);
-        //设置配置源。
+        // 设置配置源。
         def.setSource(source);
-        //关键流程，将这个bean注册到beanFactory中，并且组装成dbh对象添加到set里面。
+        // 关键流程，将这个bean注册到beanFactory中，并且组装成dbh对象添加到set里面。
         beanDefs.add(registerPostProcessor(registry, def, CONFIGURATION_ANNOTATION_PROCESSOR_BEAN_NAME));
     }
 
     if (!registry.containsBeanDefinition(AUTOWIRED_ANNOTATION_PROCESSOR_BEAN_NAME)) {
-        //创建一个AutowiredAnnotationBeanPostProcessor类型的rbd。
+        // 创建一个AutowiredAnnotationBeanPostProcessor类型的rbd。
         RootBeanDefinition def = new RootBeanDefinition(AutowiredAnnotationBeanPostProcessor.class);
-        //设置配置源。
+        // 设置配置源。
         def.setSource(source);
-        //关键流程，将这个bean注册到beanFactory中，并且组装成dbh对象添加到set里面。
+        // 关键流程，将这个bean注册到beanFactory中，并且组装成dbh对象添加到set里面。
         beanDefs.add(registerPostProcessor(registry, def, AUTOWIRED_ANNOTATION_PROCESSOR_BEAN_NAME));
     }
 
     // Check for JSR-250 support, and if present add the CommonAnnotationBeanPostProcessor.
     if (jsr250Present && !registry.containsBeanDefinition(COMMON_ANNOTATION_PROCESSOR_BEAN_NAME)) {
-        //判断javax.annotation.Resource能不能被加载，如果可以的话创建一个CommonAnnotationBeanPostProcessor类型的rbd。
+        // 判断javax.annotation.Resource能不能被加载，如果可以的话创建一个CommonAnnotationBeanPostProcessor类型的rbd。
         RootBeanDefinition def = new RootBeanDefinition(CommonAnnotationBeanPostProcessor.class);
-        //设置配置源。
+        // 设置配置源。
         def.setSource(source);
-        //关键流程，将这个bean注册到beanFactory中，并且组装成dbh对象添加到set里面。
+        // 关键流程，将这个bean注册到beanFactory中，并且组装成dbh对象添加到set里面。
         beanDefs.add(registerPostProcessor(registry, def, COMMON_ANNOTATION_PROCESSOR_BEAN_NAME));
     }
 
@@ -276,36 +276,36 @@ public static Set<BeanDefinitionHolder> registerAnnotationConfigProcessors(
     if (jpaPresent && !registry.containsBeanDefinition(PERSISTENCE_ANNOTATION_PROCESSOR_BEAN_NAME)) {
         RootBeanDefinition def = new RootBeanDefinition();
         try {
-         //判断javax.persistence.EntityManagerFactory能不能被加载，如果可以的话创建一个org.springframework.orm.jpa.support.PersistenceAnnotationBeanPostProcessor类型的rbd。       
+         // 判断javax.persistence.EntityManagerFactory能不能被加载，如果可以的话创建一个org.springframework.orm.jpa.support.PersistenceAnnotationBeanPostProcessor类型的rbd。       
 		def.setBeanClass(ClassUtils.forName(PERSISTENCE_ANNOTATION_PROCESSOR_CLASS_NAME,                                          AnnotationConfigUtils.class.getClassLoader()));
         }
         catch (ClassNotFoundException ex) {
             throw new IllegalStateException(
                 "Cannot load optional framework class: " + PERSISTENCE_ANNOTATION_PROCESSOR_CLASS_NAME, ex);
         }
-        //设置配置源。
+        // 设置配置源。
         def.setSource(source);
-        //关键流程，将这个bean注册到beanFactory中，并且组装成dbh对象添加到set里面。
+        // 关键流程，将这个bean注册到beanFactory中，并且组装成dbh对象添加到set里面。
         beanDefs.add(registerPostProcessor(registry, def, PERSISTENCE_ANNOTATION_PROCESSOR_BEAN_NAME));
     }
     if (!registry.containsBeanDefinition(EVENT_LISTENER_PROCESSOR_BEAN_NAME)) {
-        //判断ACSWSAC如果不包含org.springframework.context.event.internalEventListenerProcessor，创建一个EventListenerMethodProcessor类型的rbd。
+        // 判断ACSWSAC如果不包含org.springframework.context.event.internalEventListenerProcessor，创建一个EventListenerMethodProcessor类型的rbd。
         RootBeanDefinition def = new RootBeanDefinition(EventListenerMethodProcessor.class);
-        //设置配置源。
+        // 设置配置源。
         def.setSource(source);
-        //关键流程，将这个bean注册到beanFactory中，并且组装成dbh对象添加到set里面。
+        // 关键流程，将这个bean注册到beanFactory中，并且组装成dbh对象添加到set里面。
         beanDefs.add(registerPostProcessor(registry, def, EVENT_LISTENER_PROCESSOR_BEAN_NAME));
     }
 
     if (!registry.containsBeanDefinition(EVENT_LISTENER_FACTORY_BEAN_NAME)) {
-        //判断ACSWSAC如果不包含org.springframework.context.event.internalEventListenerFactory，创建一个EventListenerMethodProcessor类型的rbd。
+        // 判断ACSWSAC如果不包含org.springframework.context.event.internalEventListenerFactory，创建一个EventListenerMethodProcessor类型的rbd。
         RootBeanDefinition def = new RootBeanDefinition(DefaultEventListenerFactory.class);
-        //设置配置源。
+        // 设置配置源。
         def.setSource(source);
-        //关键流程，将这个bean注册到beanFactory中，并且组装成dbh对象添加到set里面。
+        // 关键流程，将这个bean注册到beanFactory中，并且组装成dbh对象添加到set里面。
         beanDefs.add(registerPostProcessor(registry, def, EVENT_LISTENER_FACTORY_BEAN_NAME));
     }
-	//返回初始化好各种内置bean的rdb set集合。
+	// 返回初始化好各种内置bean的rdb set集合。
     return beanDefs;
 }
 
@@ -313,14 +313,14 @@ public static Set<BeanDefinitionHolder> registerAnnotationConfigProcessors(
 public ClassPathBeanDefinitionScanner(BeanDefinitionRegistry registry, boolean 				useDefaultFilters,Environment environment, @Nullable ResourceLoader resourceLoader) {
 
     Assert.notNull(registry, "BeanDefinitionRegistry must not be null");
-    //赋值registry=ACSWSAC。
+    // 赋值registry=ACSWSAC。
     this.registry = registry;
-	//使用默认过滤器。
+	// 使用默认过滤器。
     if (useDefaultFilters) {
-        //#2-1-2-1 注册默认的注解过滤器类
+        // #2-1-2-1 注册默认的注解过滤器类
         registerDefaultFilters();
     }
-    //设置environment对象。
+    // 设置environment对象。
     setEnvironment(environment);
     //#2-1-2-2
     setResourceLoader(resourceLoader);
@@ -329,12 +329,12 @@ public ClassPathBeanDefinitionScanner(BeanDefinitionRegistry registry, boolean 	
 	//#2-1-2-1
 @SuppressWarnings("unchecked")
 protected void registerDefaultFilters() {
-    //list集合中添加Component类型的注解过滤器。
+    // list集合中添加Component类型的注解过滤器。
     this.includeFilters.add(new AnnotationTypeFilter(Component.class));
-    //获取当前类的ClassLoader，Launcher$AppClassLoader。
+    // 获取当前类的ClassLoader，Launcher$AppClassLoader。
     ClassLoader cl = ClassPathScanningCandidateComponentProvider.class.getClassLoader();
     try {
-        //list集合中添加javax.annotation.ManagedBean类型的注解过滤器，如果没有这个类会catch住ClassNotFoundException 异常。
+        // list集合中添加javax.annotation.ManagedBean类型的注解过滤器，如果没有这个类会catch住ClassNotFoundException 异常。
         this.includeFilters.add(new AnnotationTypeFilter(
             ((Class<? extends Annotation>) ClassUtils.forName("javax.annotation.ManagedBean", cl)), false));
         logger.trace("JSR-250 'javax.annotation.ManagedBean' found and supported for component scanning");
@@ -343,7 +343,7 @@ protected void registerDefaultFilters() {
         // JSR-250 1.1 API (as included in Java EE 6) not available - simply skip.
     }
     try {
-        //list集合中添加javax.inject.Named类型的注解过滤器。
+        // list集合中添加javax.inject.Named类型的注解过滤器。
         this.includeFilters.add(new AnnotationTypeFilter(
             ((Class<? extends Annotation>) ClassUtils.forName("javax.inject.Named", cl)), false));
         logger.trace("JSR-330 'javax.inject.Named' annotation found and supported for component scanning");
@@ -355,11 +355,11 @@ protected void registerDefaultFilters() {
 
 //#2-1-2-2
 public void setResourceLoader(@Nullable ResourceLoader resourceLoader) {
-    //赋值this.resourcePatternResolver = ACSWSAC。
+    // 赋值this.resourcePatternResolver = ACSWSAC。
     this.resourcePatternResolver = ResourcePatternUtils.getResourcePatternResolver(resourceLoader);
-    //创建CachingMetadataReaderFactory对象，目的不详。
+    // 创建CachingMetadataReaderFactory对象，目的不详。
     this.metadataReaderFactory = new CachingMetadataReaderFactory(resourceLoader);
-    //增加spring.components配置，加速包扫描速度。
+    // 增加spring.components配置，加速包扫描速度。
     this.componentsIndex = CandidateComponentsIndexLoader.loadIndex(this.resourcePatternResolver.getClassLoader());
 }
 
@@ -367,13 +367,13 @@ public void setResourceLoader(@Nullable ResourceLoader resourceLoader) {
 private void prepareContext(ConfigurableApplicationContext context,
                             ConfigurableEnvironment environment, SpringApplicationRunListeners listeners,
                             ApplicationArguments applicationArguments, Banner printedBanner) {
-    //ACSWSAC设置环境参数为environment，并且AbstractApplicationContext，reader，scanner都重新设置。这里有个疑问，既然这边重新设置，那为啥在创建ACSWSAC的时候要创建environment对象，这两个对象并不一致。
+    // ACSWSAC设置环境参数为environment，并且AbstractApplicationContext，reader，scanner都重新设置。这里有个疑问，既然这边重新设置，那为啥在创建ACSWSAC的时候要创建environment对象，这两个对象并不一致。
     context.setEnvironment(environment);
-    //#3-1
+    // #3-1
     postProcessApplicationContext(context);
-    //执行前面加载的所有Initializer的initialize方法，比如自定义的DemoInitializer。[DemoInitializer, DelegatingApplicationContextInitializer, SharedMetadataReaderFactoryContextInitializer, ContextIdApplicationContextInitialize, ConfigurationWarningsApplicationContextInitializer, ServerPortInfoApplicationContextInitializer, ConditionEvaluationReportLoggingListener]
+    // 执行前面加载的所有Initializer的initialize方法，比如自定义的DemoInitializer。[DemoInitializer, DelegatingApplicationContextInitializer, SharedMetadataReaderFactoryContextInitializer, ContextIdApplicationContextInitialize, ConfigurationWarningsApplicationContextInitializer, ServerPortInfoApplicationContextInitializer, ConditionEvaluationReportLoggingListener]
     applyInitializers(context);
-    //调用类型为ApplicationContextInitializedEvent的监听器的onApplicationEvent方法。
+    // 调用类型为ApplicationContextInitializedEvent的监听器的onApplicationEvent方法。
     listeners.contextPrepared(context);
     if (this.logStartupInfo) {
         //如果context是根结构，那么打印启动信息，比如ApplicationName、pid、context信息等。
