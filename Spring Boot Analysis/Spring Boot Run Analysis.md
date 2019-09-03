@@ -367,7 +367,7 @@ public void setResourceLoader(@Nullable ResourceLoader resourceLoader) {
 private void prepareContext(ConfigurableApplicationContext context,
                             ConfigurableEnvironment environment, SpringApplicationRunListeners listeners,
                             ApplicationArguments applicationArguments, Banner printedBanner) {
-    // ACSWSAC设置环境参数为environment，并且AbstractApplicationContext，reader，scanner都重新设置。这里有个疑问，既然这边重新设置，那为啥在创建ACSWSAC的时候要创建environment对象，这两个对象并不一致。
+    // ACSWSAC设置环境参数为environment，并且AbstractApplicationContext，reader，scanner都重新设置。这里有个疑问，既然这边重新设置，那为啥在创建ACSWSAC的时候要创建environment对象，这两个对象并不一致。这里是重新new了一个包含environment属性的ConditionEvaluator对象，讲run方法中创建的environment对象设置进去。
     context.setEnvironment(environment);
     // #3-1
     postProcessApplicationContext(context);
@@ -475,18 +475,18 @@ public final void refresh() throws BeansException, IllegalStateException {
 ```java
 @Override
 public void refresh() throws BeansException, IllegalStateException {
-    //这里加锁，主要是防止并发的启动context。
+    // 这里加锁，主要是防止并发的启动context。
     synchronized (this.startupShutdownMonitor) {
         // Prepare this context for refreshing.
         // 准备上下文，主要是设置启动时间、活跃状态，还有初始化一些配置。
         prepareRefresh();
 
         // Tell the subclass to refresh the internal bean factory.
-        //返回DefaultListableBeanFactory，设置serializationId=application
+        // 返回DefaultListableBeanFactory，设置serializationId=application
         ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
 
         // Prepare the bean factory for use in this context.
-        //#1 设置DefaultListableBeanFactory各种配置
+        // #1 设置DefaultListableBeanFactory各种配置
         prepareBeanFactory(beanFactory);
 
         try {
@@ -553,11 +553,11 @@ public void refresh() throws BeansException, IllegalStateException {
 //#1 
 protected void prepareBeanFactory(ConfigurableListableBeanFactory beanFactory) {
     // Tell the internal bean factory to use the context's class loader etc.
-    //设置ClassLoader
+    // 设置ClassLoader
     beanFactory.setBeanClassLoader(getClassLoader());
-    //设置表达式处理器为StandardBeanExpressionResolver，这个应该就是处理
+    // 设置表达式处理器为StandardBeanExpressionResolver。
     beanFactory.setBeanExpressionResolver(new StandardBeanExpressionResolver(beanFactory.getBeanClassLoader()));
-    //设置ResourceEditorRegistrar。
+    // 设置ResourceEditorRegistrar。
     beanFactory.addPropertyEditorRegistrar(new ResourceEditorRegistrar(this, getEnvironment()));
 
     // Configure the bean factory with context callbacks.
